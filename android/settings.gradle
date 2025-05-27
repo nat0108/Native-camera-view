@@ -1,1 +1,57 @@
-rootProject.name = 'native_camera_view'
+// File: your_plugin_name/android/settings.gradle
+
+// --- KHỐI pluginManagement PHẢI LÀ ĐẦU TIÊN ---
+pluginManagement {
+    // --- ĐỊNH NGHĨA FLUTTER SDK PATH ---
+    def flutterSdkPath = {
+        def properties = new Properties()
+        def pluginRoot = rootProject.projectDir.parentFile
+        def localPropertiesInPluginRoot = new File(pluginRoot, "local.properties")
+        def localPropertiesInExampleAndroid = new File(pluginRoot, "example/android/local.properties") // Kiểm tra cả trong example
+
+        File fileToLoad = null
+        if (localPropertiesInPluginRoot.exists()) {
+            fileToLoad = localPropertiesInPluginRoot
+        } else if (localPropertiesInExampleAndroid.exists()) {
+            fileToLoad = localPropertiesInExampleAndroid
+        }
+
+        if (fileToLoad != null && fileToLoad.exists()) {
+            fileToLoad.withReader('UTF-8') { reader ->
+                properties.load(reader)
+            }
+        }
+
+        def sdkPath = properties.getProperty('flutter.sdk')
+        if (sdkPath == null) {
+            sdkPath = System.getenv('FLUTTER_ROOT')
+        }
+        if (sdkPath == null) {
+            throw new GradleException(
+                    "Flutter SDK not found. \n" +
+                            "1. Ensure the FLUTTER_ROOT environment variable is set to your Flutter SDK path.\n" +
+                            "OR\n" +
+                            "2. Create a file named 'local.properties' in the root directory of your plugin ('" + pluginRoot.absolutePath + "')\n" +
+                            "   OR in the 'example/android/' directory of your plugin\n" +
+                            "   with the following content (replace with your actual SDK path):\n" +
+                            "   flutter.sdk=/path/to/your/flutter/sdk\n"
+            )
+        }
+        return sdkPath
+    }()
+
+    // Thêm includeBuild để Gradle biết nơi tìm các plugin/script của Flutter
+    includeBuild "$flutterSdkPath/packages/flutter_tools/gradle"
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+// --- KHỐI plugins ĐẾN SAU pluginManagement ---
+// Plugin này sẽ đảm nhận việc nạp các cấu hình cần thiết của Flutter
+plugins {
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+}
