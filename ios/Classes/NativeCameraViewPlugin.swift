@@ -8,5 +8,4 @@ public class NativeCameraViewPlugin: NSObject, FlutterPlugin {
      registrar.register(factory, withId: viewType)
      print("SwiftNativeCameraViewPlugin: Factory registered with viewType: \(viewType)")
    }
- }
 }
