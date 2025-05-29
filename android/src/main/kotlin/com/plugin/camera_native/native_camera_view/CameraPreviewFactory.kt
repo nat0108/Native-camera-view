@@ -148,11 +148,11 @@ class CameraPlatformView(
                 previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
             }
         }
-        if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) {
-            previewView.scaleX = -1.0f
-        } else {
-            previewView.scaleX = 1.0f
-        }
+//        if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) {
+//            previewView.scaleX = -1.0f
+//        } else {
+//            previewView.scaleX = 1.0f
+//        }
     }
 
     private fun setupCamera() {
