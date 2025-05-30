@@ -1,7 +1,7 @@
+import AVFoundation
 // File: ios/Runner/SwiftCameraPreview.swift
 import Flutter
 import UIKit
-import AVFoundation
 
 // Lớp UIView tùy chỉnh để quản lý frame của previewLayer
 class CameraHostView: UIView {
@@ -15,6 +15,19 @@ class CameraHostView: UIView {
         previewLayer?.removeFromSuperlayer()
         previewLayer = nil
     }
+    
+    // Hàm để chụp lại nội dung của view này thành UIImage
+   func captureCurrentFrame() -> UIImage? {
+       UIGraphicsBeginImageContextWithOptions(self.bounds.size, false, UIScreen.main.scale)
+       guard let context = UIGraphicsGetCurrentContext() else {
+           UIGraphicsEndImageContext()
+           return nil
+       }
+       self.layer.render(in: context)
+       let image = UIGraphicsGetImageFromCurrentImageContext()
+       UIGraphicsEndImageContext()
+       return image
+   }
 }
 
 class CameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
@@ -23,21 +36,31 @@ class CameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
         self.messenger = messenger
         super.init()
     }
-    func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
-        return CameraPlatformView(frame: frame, viewIdentifier: viewId, arguments: args, binaryMessenger: messenger)
+    func create(
+        withFrame frame: CGRect,
+        viewIdentifier viewId: Int64,
+        arguments args: Any?
+    ) -> FlutterPlatformView {
+        return CameraPlatformView(
+            frame: frame,
+            viewIdentifier: viewId,
+            arguments: args,
+            binaryMessenger: messenger
+        )
     }
     public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
-          return FlutterStandardMessageCodec.sharedInstance()
+        return FlutterStandardMessageCodec.sharedInstance()
     }
 }
 
-
-class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDelegate {
+class CameraPlatformView: NSObject, FlutterPlatformView,
+    AVCapturePhotoCaptureDelegate
+{
     private var _hostView: CameraHostView
     private var messenger: FlutterBinaryMessenger
     private var viewId: Int64
     private var methodChannel: FlutterMethodChannel?
-    
+
     private var captureSession: AVCaptureSession?
     private var photoOutput: AVCapturePhotoOutput?
     private var currentCameraInput: AVCaptureDeviceInput?
@@ -45,24 +68,48 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
     private var isCameraPausedManually = false
     private var currentPreviewFit: String = "cover"
     private var pendingPhotoCaptureResult: FlutterResult?
+    private var frozenFrameData: Data?  // Để lưu trữ frame ảnh khi pause
 
-    private let sessionQueue = DispatchQueue(label: "com.plugin.camera_native.native_camera_view.sessionQueue")
+    private let sessionQueue = DispatchQueue(
+        label: "com.plugin.camera_native.native_camera_view.sessionQueue"
+    )
     private var isDeinitializing = false
 
-    init(frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?, binaryMessenger messenger: FlutterBinaryMessenger) {
+    init(
+        frame: CGRect,
+        viewIdentifier viewId: Int64,
+        arguments args: Any?,
+        binaryMessenger messenger: FlutterBinaryMessenger
+    ) {
         self.messenger = messenger
         self.viewId = viewId
         self._hostView = CameraHostView(frame: frame)
-        self.methodChannel = FlutterMethodChannel(name: "com.plugin.camera_native.native_camera_view/camera_method_channel_ios_\(viewId)", binaryMessenger: messenger)
+        self.methodChannel = FlutterMethodChannel(
+            name:
+                "com.plugin.camera_native.native_camera_view/camera_method_channel_ios_\(viewId)",
+            binaryMessenger: messenger
+        )
         super.init()
 
         print("[CameraPlatformView-\(viewId)] INIT, initial frame: \(frame)")
 
-        self.methodChannel?.setMethodCallHandler({ [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+        self.methodChannel?.setMethodCallHandler({
+            [weak self]
+            (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void
+            in
             guard let strongSelf = self, !strongSelf.isDeinitializing else {
                 DispatchQueue.main.async {
-                    print("[CameraPlatformView-\(viewId)] Method call on deinitialized or deinitializing instance: \(call.method)")
-                    result(FlutterError(code: "INSTANCE_GONE", message: "Platform view instance was deallocated or is deinitializing.", details: nil))
+                    print(
+                        "[CameraPlatformView-\(viewId)] Method call on deinitialized or deinitializing instance: \(call.method)"
+                    )
+                    result(
+                        FlutterError(
+                            code: "INSTANCE_GONE",
+                            message:
+                                "Platform view instance was deallocated or is deinitializing.",
+                            details: nil
+                        )
+                    )
                 }
                 return
             }
@@ -70,9 +117,15 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
         })
 
         if let params = args as? [String: Any] {
-            if let fitMode = params["cameraPreviewFit"] as? String { currentPreviewFit = fitMode }
-            if let useFront = params["isFrontCamera"] as? Bool, useFront { currentCameraPosition = .front }
-            print("[CameraPlatformView-\(viewId)] Parsed arguments: fitMode=\(currentPreviewFit), useFront=\(currentCameraPosition == .front)")
+            if let fitMode = params["cameraPreviewFit"] as? String {
+                currentPreviewFit = fitMode
+            }
+            if let useFront = params["isFrontCamera"] as? Bool, useFront {
+                currentCameraPosition = .front
+            }
+            print(
+                "[CameraPlatformView-\(viewId)] Parsed arguments: fitMode=\(currentPreviewFit), useFront=\(currentCameraPosition == .front)"
+            )
         }
         checkCameraPermissionsAndSetup()
     }
@@ -80,9 +133,13 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
     func view() -> UIView { return _hostView }
 
     private func checkCameraPermissionsAndSetup() {
-        print("[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup CALLED")
+        print(
+            "[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup CALLED"
+        )
         guard !isDeinitializing else {
-            print("[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup: Instance is deinitializing, aborting.")
+            print(
+                "[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup: Instance is deinitializing, aborting."
+            )
             return
         }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -90,34 +147,68 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
             print("[CameraPlatformView-\(viewId)] Permission authorized.")
             self.setupCamera()
         case .notDetermined:
-            print("[CameraPlatformView-\(viewId)] Permission not determined. Requesting...")
+            print(
+                "[CameraPlatformView-\(viewId)] Permission not determined. Requesting..."
+            )
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                guard let strongSelf = self, !strongSelf.isDeinitializing else { return }
+                guard let strongSelf = self, !strongSelf.isDeinitializing else {
+                    return
+                }
                 DispatchQueue.main.async {
-                    print("[CameraPlatformView-\(strongSelf.viewId)] Permission request completed. Granted: \(granted)")
-                    if granted { strongSelf.setupCamera() }
-                    else { print("[CameraPlatformView-\(strongSelf.viewId)] Permission denied by user.") }
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Permission request completed. Granted: \(granted)"
+                    )
+                    if granted {
+                        strongSelf.setupCamera()
+                    } else {
+                        print(
+                            "[CameraPlatformView-\(strongSelf.viewId)] Permission denied by user."
+                        )
+                    }
                 }
             }
         case .denied:
-            print("[CameraPlatformView-\(viewId)] Permission denied previously.")
-            DispatchQueue.main.async { if let channel = self.methodChannel, !self.isDeinitializing { channel.invokeMethod("onError", arguments: "camera_permission_denied_previously") } }
+            print(
+                "[CameraPlatformView-\(viewId)] Permission denied previously."
+            )
+            DispatchQueue.main.async {
+                if let channel = self.methodChannel, !self.isDeinitializing {
+                    channel.invokeMethod(
+                        "onError",
+                        arguments: "camera_permission_denied_previously"
+                    )
+                }
+            }
         case .restricted:
-             print("[CameraPlatformView-\(viewId)] Permission restricted.")
-             DispatchQueue.main.async { if let channel = self.methodChannel, !self.isDeinitializing { channel.invokeMethod("onError", arguments: "camera_permission_restricted") } }
+            print("[CameraPlatformView-\(viewId)] Permission restricted.")
+            DispatchQueue.main.async {
+                if let channel = self.methodChannel, !self.isDeinitializing {
+                    channel.invokeMethod(
+                        "onError",
+                        arguments: "camera_permission_restricted"
+                    )
+                }
+            }
         @unknown default:
-            fatalError("Unknown camera authorization status for viewId: \(viewId)")
+            fatalError(
+                "Unknown camera authorization status for viewId: \(viewId)"
+            )
         }
     }
 
     private func setupCamera() {
         sessionQueue.async { [weak self] in
-            guard let strongSelf = self, !strongSelf.isDeinitializing else { return }
-            print("[CameraPlatformView-\(strongSelf.viewId)] setupCamera on sessionQueue, lens: \(strongSelf.currentCameraPosition == .front ? "FRONT" : "BACK")")
+            guard let strongSelf = self, !strongSelf.isDeinitializing else {
+                return
+            }
+            print(
+                "[CameraPlatformView-\(strongSelf.viewId)] setupCamera on sessionQueue, lens: \(strongSelf.currentCameraPosition == .front ? "FRONT" : "BACK")"
+            )
 
             let newSession = AVCaptureSession()
-            
-            if let oldSession = strongSelf.captureSession, oldSession.isRunning {
+
+            if let oldSession = strongSelf.captureSession, oldSession.isRunning
+            {
                 oldSession.stopRunning()
             }
             strongSelf.captureSession = newSession
@@ -125,60 +216,97 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
 
             var configurationSuccess = true
             newSession.beginConfiguration()
-            
+
             do {
-                guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: strongSelf.currentCameraPosition) else {
-                    print("[CameraPlatformView-\(strongSelf.viewId)] Failed to get camera device.")
+                guard
+                    let captureDevice = AVCaptureDevice.default(
+                        .builtInWideAngleCamera,
+                        for: .video,
+                        position: strongSelf.currentCameraPosition
+                    )
+                else {
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Failed to get camera device."
+                    )
                     configurationSuccess = false
                     // commitConfiguration sẽ được gọi ở cuối khối newSession.beginConfiguration()
                     // không cần return sớm ở đây nếu không có commit.
                     // Để an toàn, chúng ta sẽ commit và return nếu không có device.
                     newSession.commitConfiguration()
-                    print("[CameraPlatformView-\(strongSelf.viewId)] Session configuration committed (early exit due to no device).")
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Session configuration committed (early exit due to no device)."
+                    )
                     return
                 }
 
                 // Xóa input cũ khỏi newSession nếu nó đã từng được thêm vào
-                if let currentInput = strongSelf.currentCameraInput, newSession.inputs.contains(currentInput) {
-                     newSession.removeInput(currentInput)
+                if let currentInput = strongSelf.currentCameraInput,
+                    newSession.inputs.contains(currentInput)
+                {
+                    newSession.removeInput(currentInput)
                 }
                 // SỬA LỖI: Bỏ dấu ! khi captureDevice đã là non-optional
                 let input = try AVCaptureDeviceInput(device: captureDevice)
                 strongSelf.currentCameraInput = input
-                if newSession.canAddInput(input) { newSession.addInput(input) } else { configurationSuccess = false }
+                if newSession.canAddInput(input) {
+                    newSession.addInput(input)
+                } else {
+                    configurationSuccess = false
+                }
 
                 // Xóa output cũ khỏi newSession nếu nó đã từng được thêm vào
-                if let existingPhotoOutput = strongSelf.photoOutput, newSession.outputs.contains(existingPhotoOutput) {
+                if let existingPhotoOutput = strongSelf.photoOutput,
+                    newSession.outputs.contains(existingPhotoOutput)
+                {
                     newSession.removeOutput(existingPhotoOutput)
                 }
                 let newPhotoOutput = AVCapturePhotoOutput()
                 strongSelf.photoOutput = newPhotoOutput
-                if newSession.canAddOutput(newPhotoOutput) { newSession.addOutput(newPhotoOutput) } else { configurationSuccess = false }
-                
+                if newSession.canAddOutput(newPhotoOutput) {
+                    newSession.addOutput(newPhotoOutput)
+                } else {
+                    configurationSuccess = false
+                }
+
             } catch {
-                print("[CameraPlatformView-\(strongSelf.viewId)] Error during session IO config: \(error)")
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] Error during session IO config: \(error)"
+                )
                 configurationSuccess = false
             }
-            
+
             newSession.commitConfiguration()
-            print("[CameraPlatformView-\(strongSelf.viewId)] Session configuration committed. Success: \(configurationSuccess)")
-            
+            print(
+                "[CameraPlatformView-\(strongSelf.viewId)] Session configuration committed. Success: \(configurationSuccess)"
+            )
+
             guard configurationSuccess else {
-                print("[CameraPlatformView-\(strongSelf.viewId)] Aborting setup due to configuration error.")
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] Aborting setup due to configuration error."
+                )
                 return
             }
 
             DispatchQueue.main.async {
                 guard !strongSelf.isDeinitializing else { return }
-                let newPreviewLayer = AVCaptureVideoPreviewLayer(session: newSession)
+                let newPreviewLayer = AVCaptureVideoPreviewLayer(
+                    session: newSession
+                )
                 strongSelf._hostView.previewLayer?.removeFromSuperlayer()
                 strongSelf._hostView.previewLayer = newPreviewLayer
                 strongSelf.applyPreviewFitToLayer(layer: newPreviewLayer)
-                strongSelf._hostView.layer.insertSublayer(newPreviewLayer, at: 0)
+                strongSelf._hostView.layer.insertSublayer(
+                    newPreviewLayer,
+                    at: 0
+                )
                 strongSelf._hostView.setNeedsLayout()
-                print("[CameraPlatformView-\(strongSelf.viewId)] New previewLayer configured.")
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] New previewLayer configured."
+                )
 
-                if let connection = newPreviewLayer.connection, connection.isVideoMirroringSupported {
+                if let connection = newPreviewLayer.connection,
+                    connection.isVideoMirroringSupported
+                {
                     connection.automaticallyAdjustsVideoMirroring = true
                 }
             }
@@ -186,16 +314,22 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
             if !strongSelf.isCameraPausedManually {
                 if strongSelf.captureSession === newSession {
                     newSession.startRunning()
-                    print("[CameraPlatformView-\(strongSelf.viewId)] New camera session started.")
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] New camera session started."
+                    )
                 } else {
-                    print("[CameraPlatformView-\(strongSelf.viewId)] Session changed before startRunning. Aborting start.")
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Session changed before startRunning. Aborting start."
+                    )
                 }
             } else {
-                 print("[CameraPlatformView-\(strongSelf.viewId)] New camera session is manually paused, not starting.")
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] New camera session is manually paused, not starting."
+                )
             }
         }
     }
-    
+
     private func applyPreviewFitToLayer(layer: AVCaptureVideoPreviewLayer) {
         switch currentPreviewFit.lowercased() {
         case "fitwidth", "fitheight": layer.videoGravity = .resizeAspectFill
@@ -205,168 +339,480 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
         }
     }
 
-    private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    private func handleMethodCall(
+        _ call: FlutterMethodCall,
+        result: @escaping FlutterResult
+    ) {
         print("[CameraPlatformView-\(viewId)] handleMethodCall: \(call.method)")
         switch call.method {
         case "captureImage": capturePhoto(result: result)
         case "pauseCamera": pauseCameraNative(result: result)
         case "resumeCamera": resumeCameraNative(result: result)
         case "switchCamera":
-            if let args = call.arguments as? [String: Any], let useFront = args["useFrontCamera"] as? Bool {
+            if let args = call.arguments as? [String: Any],
+                let useFront = args["useFrontCamera"] as? Bool
+            {
                 switchCameraNative(useFront: useFront, result: result)
-            } else { DispatchQueue.main.async { result(FlutterError(code: "INVALID_ARGUMENT", message: "Missing 'useFrontCamera' for viewId: \(self.viewId)", details: nil)) } }
+            } else {
+                DispatchQueue.main.async {
+                    result(
+                        FlutterError(
+                            code: "INVALID_ARGUMENT",
+                            message:
+                                "Missing 'useFrontCamera' for viewId: \(self.viewId)",
+                            details: nil
+                        )
+                    )
+                }
+            }
         case "deleteAllCapturedPhotos": deleteAllPhotosNative(result: result)
-        default: DispatchQueue.main.async { result(FlutterMethodNotImplemented) }
+        default:
+            DispatchQueue.main.async { result(FlutterMethodNotImplemented) }
         }
     }
 
     private func deleteAllPhotosNative(result: @escaping FlutterResult) {
-            print("[CameraPlatformView-\(viewId)] deleteAllPhotosNative called.")
-            let fileManager = FileManager.default
-            let tempDirectory = NSTemporaryDirectory()
-            var allDeleted = true
-            var filesFound = false
+        print("[CameraPlatformView-\(viewId)] deleteAllPhotosNative called.")
+        let fileManager = FileManager.default
+        let tempDirectory = NSTemporaryDirectory()
+        var allDeleted = true
+        var filesFound = false
 
-            do {
-                let fileURLs = try fileManager.contentsOfDirectory(atPath: tempDirectory)
-                for fileName in fileURLs {
-                    // Điều kiện để xác định file ảnh của plugin
-                    // Ví dụ: nếu tên file luôn bắt đầu bằng "photo_ios_" (như trong hàm capturePhoto)
-                    if fileName.hasPrefix("photo_ios_") && fileName.hasSuffix(".jpg") {
-                        filesFound = true
-                        let filePath = URL(fileURLWithPath: tempDirectory).appendingPathComponent(fileName)
-                        do {
-                            try fileManager.removeItem(at: filePath)
-                            print("[CameraPlatformView-\(viewId)] Deleted photo: \(fileName)")
-                        } catch {
-                            print("[CameraPlatformView-\(viewId)] Failed to delete photo \(fileName): \(error)")
-                            allDeleted = false
-                        }
+        do {
+            let fileURLs = try fileManager.contentsOfDirectory(
+                atPath: tempDirectory
+            )
+            for fileName in fileURLs {
+                // Điều kiện để xác định file ảnh của plugin
+                // Ví dụ: nếu tên file luôn bắt đầu bằng "photo_ios_" (như trong hàm capturePhoto)
+                if fileName.hasPrefix("photo_ios_")
+                    && fileName.hasSuffix(".jpg")
+                {
+                    filesFound = true
+                    let filePath = URL(fileURLWithPath: tempDirectory)
+                        .appendingPathComponent(fileName)
+                    do {
+                        try fileManager.removeItem(at: filePath)
+                        print(
+                            "[CameraPlatformView-\(viewId)] Deleted photo: \(fileName)"
+                        )
+                    } catch {
+                        print(
+                            "[CameraPlatformView-\(viewId)] Failed to delete photo \(fileName): \(error)"
+                        )
+                        allDeleted = false
                     }
                 }
+            }
 
-                if allDeleted {
-                     if (filesFound) {
-                        DispatchQueue.main.async { result(true) }
-                     } else {
-                        print("[CameraPlatformView-\(viewId)] No photos found in temp directory to delete.")
-                        DispatchQueue.main.async { result(true) } // Không có file, coi như thành công
-                     }
+            if allDeleted {
+                if filesFound {
+                    DispatchQueue.main.async { result(true) }
                 } else {
-                    DispatchQueue.main.async { result(false) } // Có lỗi khi xóa
+                    print(
+                        "[CameraPlatformView-\(viewId)] No photos found in temp directory to delete."
+                    )
+                    DispatchQueue.main.async { result(true) }  // Không có file, coi như thành công
                 }
+            } else {
+                DispatchQueue.main.async { result(false) }  // Có lỗi khi xóa
+            }
 
-            } catch {
-                print("[CameraPlatformView-\(viewId)] Error listing files in temp directory: \(error)")
-                DispatchQueue.main.async { result(FlutterError(code: "LIST_FILES_FAILED", message: "Error listing files: \(error.localizedDescription)", details: nil)) }
+        } catch {
+            print(
+                "[CameraPlatformView-\(viewId)] Error listing files in temp directory: \(error)"
+            )
+            DispatchQueue.main.async {
+                result(
+                    FlutterError(
+                        code: "LIST_FILES_FAILED",
+                        message:
+                            "Error listing files: \(error.localizedDescription)",
+                        details: nil
+                    )
+                )
             }
         }
+    }
+
+    //    private func capturePhoto(result: @escaping FlutterResult) {
+    //        sessionQueue.async { [weak self] in
+    //            guard let strongSelf = self, !strongSelf.isDeinitializing else {
+    //                DispatchQueue.main.async {
+    //                    result(
+    //                        FlutterError(
+    //                            code: "INSTANCE_GONE_CAPTURE",
+    //                            message: "Self nil or deinitializing",
+    //                            details: nil
+    //                        )
+    //                    )
+    //                }
+    //                return
+    //            }
+    //            guard let photoOutput = strongSelf.photoOutput,
+    //                let session = strongSelf.captureSession, session.isRunning
+    //            else {
+    //                DispatchQueue.main.async {
+    //                    result(
+    //                        FlutterError(
+    //                            code: "CAMERA_UNAVAILABLE",
+    //                            message:
+    //                                "Camera not ready for viewId: \(strongSelf.viewId)",
+    //                            details: nil
+    //                        )
+    //                    )
+    //                }
+    //                return
+    //            }
+    //            if strongSelf.isCameraPausedManually {
+    //                DispatchQueue.main.async {
+    //                    result(
+    //                        FlutterError(
+    //                            code: "CAMERA_PAUSED",
+    //                            message:
+    //                                "Camera is paused for viewId: \(strongSelf.viewId)",
+    //                            details: nil
+    //                        )
+    //                    )
+    //                }
+    //                return
+    //            }
+    //            let photoSettings = AVCapturePhotoSettings()
+    //            strongSelf.pendingPhotoCaptureResult = result
+    //            photoOutput.capturePhoto(with: photoSettings, delegate: strongSelf)
+    //        }
+    //    }
 
     private func capturePhoto(result: @escaping FlutterResult) {
+
+        if isCameraPausedManually {
+            if let frameData = self.frozenFrameData {
+                print("[CameraPlatformView-\(viewId)] Capturing frozen frame.")
+                // Lưu frameData đã đóng băng thành file
+                let tempDir = NSTemporaryDirectory()
+                let fileName =
+                    "frozen_photo_ios_\(viewId)_\(Date().timeIntervalSince1970).jpg"
+                let filePath = URL(fileURLWithPath: tempDir)
+                    .appendingPathComponent(fileName)
+                do {
+                    try frameData.write(to: filePath)
+                    print(
+                        "[CameraPlatformView-\(viewId)] Frozen frame saved to: \(filePath.path)"
+                    )
+                    DispatchQueue.main.async { result(filePath.path) }
+                } catch {
+                    print(
+                        "[CameraPlatformView-\(viewId)] Error saving frozen frame: \(error)"
+                    )
+                    DispatchQueue.main.async {
+                        result(
+                            FlutterError(
+                                code: "SAVE_FROZEN_FAILED",
+                                message:
+                                    "Error saving frozen frame: \(error.localizedDescription)",
+                                details: nil
+                            )
+                        )
+                    }
+                }
+            } else {
+                print(
+                    "[CameraPlatformView-\(viewId)] Camera is paused, but no frozen frame data available."
+                )
+                DispatchQueue.main.async {
+                    result(
+                        FlutterError(
+                            code: "NO_FROZEN_FRAME",
+                            message:
+                                "Camera paused, but no frozen frame available.",
+                            details: nil
+                        )
+                    )
+                }
+            }
+            return
+        }
+
+        // Logic chụp ảnh trực tiếp từ camera (khi không pause)
         sessionQueue.async { [weak self] in
             guard let strongSelf = self, !strongSelf.isDeinitializing else {
-                DispatchQueue.main.async { result(FlutterError(code: "INSTANCE_GONE_CAPTURE", message: "Self nil or deinitializing", details: nil)) }
+                DispatchQueue.main.async {
+                    result(
+                        FlutterError(
+                            code: "INSTANCE_GONE_CAPTURE",
+                            message: "Self nil or deinitializing",
+                            details: nil
+                        )
+                    )
+                }
                 return
             }
-            guard let photoOutput = strongSelf.photoOutput, let session = strongSelf.captureSession, session.isRunning else {
-                DispatchQueue.main.async { result(FlutterError(code: "CAMERA_UNAVAILABLE", message: "Camera not ready for viewId: \(strongSelf.viewId)", details: nil)) }
+            guard let photoOutput = strongSelf.photoOutput,
+                let session = strongSelf.captureSession
+            else {
+                DispatchQueue.main.async {
+                    result(
+                        FlutterError(
+                            code: "CAMERA_UNAVAILABLE",
+                            message:
+                                "Session or PhotoOutput not ready for viewId: \(strongSelf.viewId)",
+                            details: nil
+                        )
+                    )
+                }
                 return
             }
-            if strongSelf.isCameraPausedManually {
-                DispatchQueue.main.async { result(FlutterError(code: "CAMERA_PAUSED", message: "Camera is paused for viewId: \(strongSelf.viewId)", details: nil)) }
-                return
+
+            if !session.isRunning {
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] Session was not running for capture. Attempting to start it."
+                )
+                session.startRunning()
+                if !session.isRunning {
+                    DispatchQueue.main.async {
+                        result(
+                            FlutterError(
+                                code: "SESSION_START_FAILED",
+                                message:
+                                    "Failed to start session for capture on viewId: \(strongSelf.viewId)",
+                                details: nil
+                            )
+                        )
+                    }
+                    return
+                }
             }
+
             let photoSettings = AVCapturePhotoSettings()
             strongSelf.pendingPhotoCaptureResult = result
             photoOutput.capturePhoto(with: photoSettings, delegate: strongSelf)
+            print(
+                "[CameraPlatformView-\(strongSelf.viewId)] Live photo capture initiated."
+            )
         }
     }
-    
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+
+    func photoOutput(
+        _ output: AVCapturePhotoOutput,
+        didFinishProcessingPhoto photo: AVCapturePhoto,
+        error: Error?
+    ) {
         print("[CameraPlatformView-\(viewId)] photoOutput delegate called")
-        guard let resultCallback = self.pendingPhotoCaptureResult else { return }
+        guard let resultCallback = self.pendingPhotoCaptureResult else {
+            return
+        }
         self.pendingPhotoCaptureResult = nil
         if let error = error {
-            DispatchQueue.main.async { resultCallback(FlutterError(code: "CAPTURE_FAILED", message: "Error capturing photo for viewId \(self.viewId): \(error.localizedDescription)", details: nil)) }
+            DispatchQueue.main.async {
+                resultCallback(
+                    FlutterError(
+                        code: "CAPTURE_FAILED",
+                        message:
+                            "Error capturing photo for viewId \(self.viewId): \(error.localizedDescription)",
+                        details: nil
+                    )
+                )
+            }
             return
         }
         guard let imageData = photo.fileDataRepresentation() else {
-            DispatchQueue.main.async { resultCallback(FlutterError(code: "CAPTURE_FAILED", message: "No image data for viewId: \(self.viewId)", details: nil)) }
+            DispatchQueue.main.async {
+                resultCallback(
+                    FlutterError(
+                        code: "CAPTURE_FAILED",
+                        message: "No image data for viewId: \(self.viewId)",
+                        details: nil
+                    )
+                )
+            }
             return
         }
         let tempDir = NSTemporaryDirectory()
         let fileName = "photo_ios_\(viewId)_\(Date().timeIntervalSince1970).jpg"
-        let filePath = URL(fileURLWithPath: tempDir).appendingPathComponent(fileName)
+        let filePath = URL(fileURLWithPath: tempDir).appendingPathComponent(
+            fileName
+        )
         do {
             try imageData.write(to: filePath)
             DispatchQueue.main.async { resultCallback(filePath.path) }
         } catch {
-            DispatchQueue.main.async { resultCallback(FlutterError(code: "SAVE_FAILED", message: "Error saving photo for viewId \(self.viewId): \(error.localizedDescription)", details: nil)) }
+            DispatchQueue.main.async {
+                resultCallback(
+                    FlutterError(
+                        code: "SAVE_FAILED",
+                        message:
+                            "Error saving photo for viewId \(self.viewId): \(error.localizedDescription)",
+                        details: nil
+                    )
+                )
+            }
         }
     }
 
+    //    private func pauseCameraNative(result: @escaping FlutterResult) {
+    //        print("[CameraPlatformView-\(viewId)] pauseCameraNative called.")
+    //        isCameraPausedManually = true
+    //        sessionQueue.async { [weak self] in
+    //            guard let strongSelf = self, !strongSelf.isDeinitializing else {
+    //                DispatchQueue.main.async { result(nil) }
+    //                return
+    //            }
+    //            if let session = strongSelf.captureSession, session.isRunning {
+    //                session.stopRunning()
+    //                print("[CameraPlatformView-\(strongSelf.viewId)] Session stopped via pauseCameraNative.")
+    //            } else {
+    //                print("[CameraPlatformView-\(strongSelf.viewId)] Session already stopped or nil when pausing.")
+    //            }
+    //            DispatchQueue.main.async { result(nil) }
+    //        }
+    //    }
+    //
+    //    private func resumeCameraNative(result: @escaping FlutterResult) {
+    //        print("[CameraPlatformView-\(viewId)] resumeCameraNative called.")
+    //        isCameraPausedManually = false
+    //        sessionQueue.async { [weak self] in
+    //            guard let strongSelf = self, !strongSelf.isDeinitializing else {
+    //                DispatchQueue.main.async { result(nil) }
+    //                return
+    //            }
+    //            if strongSelf.captureSession == nil {
+    //                 print("[CameraPlatformView-\(strongSelf.viewId)] Session is nil on resume. Re-running setup.")
+    //                 strongSelf.setupCamera()
+    //            } else if !(strongSelf.captureSession!.isRunning) {
+    //                print("[CameraPlatformView-\(strongSelf.viewId)] Session not running on resume. Starting it.")
+    //                strongSelf.captureSession!.startRunning()
+    //            } else {
+    //                 print("[CameraPlatformView-\(strongSelf.viewId)] Session already running on resume.")
+    //            }
+    //            DispatchQueue.main.async { result(nil) }
+    //        }
+    //    }
+    
+    
     private func pauseCameraNative(result: @escaping FlutterResult) {
         print("[CameraPlatformView-\(viewId)] pauseCameraNative called.")
         isCameraPausedManually = true
-        sessionQueue.async { [weak self] in
+
+        // Chụp frame hiện tại từ _hostView (chứa previewLayer)
+        // Cần thực hiện trên main thread vì liên quan đến UI
+        DispatchQueue.main.async { [weak self] in
             guard let strongSelf = self, !strongSelf.isDeinitializing else {
-                DispatchQueue.main.async { result(nil) }
+                result(nil)  // Hoặc lỗi nếu cần
                 return
             }
-            if let session = strongSelf.captureSession, session.isRunning {
-                session.stopRunning()
-                print("[CameraPlatformView-\(strongSelf.viewId)] Session stopped via pauseCameraNative.")
+
+            if let currentFrameImage = strongSelf._hostView
+                .captureCurrentFrame()
+            {
+                // Chuyển UIImage thành Data (JPEG chất lượng vừa phải)
+                strongSelf.frozenFrameData = currentFrameImage.jpegData(
+                    compressionQuality: 0.85
+                )
+                if strongSelf.frozenFrameData != nil {
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Current frame captured and stored for pause."
+                    )
+                } else {
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Failed to convert captured frame to JPEG data."
+                    )
+                }
             } else {
-                print("[CameraPlatformView-\(strongSelf.viewId)] Session already stopped or nil when pausing.")
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] Failed to capture current frame from hostView."
+                )
             }
-            DispatchQueue.main.async { result(nil) }
+
+            // Sau khi chụp frame, dừng session trên sessionQueue
+            strongSelf.sessionQueue.async {
+                if let session = strongSelf.captureSession, session.isRunning {
+                    session.stopRunning()
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Session stopped after capturing frame for pause."
+                    )
+                } else {
+                    print(
+                        "[CameraPlatformView-\(strongSelf.viewId)] Session already stopped or nil when pausing."
+                    )
+                }
+                // Gọi result trên main thread sau khi session đã dừng (hoặc cố gắng dừng)
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+            }
         }
     }
 
     private func resumeCameraNative(result: @escaping FlutterResult) {
         print("[CameraPlatformView-\(viewId)] resumeCameraNative called.")
         isCameraPausedManually = false
+        frozenFrameData = nil  // Xóa frame đã đóng băng
+
         sessionQueue.async { [weak self] in
             guard let strongSelf = self, !strongSelf.isDeinitializing else {
                 DispatchQueue.main.async { result(nil) }
                 return
             }
-            if strongSelf.captureSession == nil {
-                 print("[CameraPlatformView-\(strongSelf.viewId)] Session is nil on resume. Re-running setup.")
-                 strongSelf.setupCamera()
-            } else if !(strongSelf.captureSession!.isRunning) {
-                print("[CameraPlatformView-\(strongSelf.viewId)] Session not running on resume. Starting it.")
-                strongSelf.captureSession!.startRunning()
+            if let session = strongSelf.captureSession, !session.isRunning {
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] Session was not running on resume. Starting it."
+                )
+                session.startRunning()
+            } else if strongSelf.captureSession == nil
+                && AVCaptureDevice.authorizationStatus(for: .video)
+                    == .authorized
+            {
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] Session is nil on resume. Re-running setup."
+                )
+                strongSelf.setupCamera()  // setupCamera đã chạy trên sessionQueue
             } else {
-                 print("[CameraPlatformView-\(strongSelf.viewId)] Session already running on resume.")
+                print(
+                    "[CameraPlatformView-\(strongSelf.viewId)] Session already running or no action needed on resume."
+                )
             }
             DispatchQueue.main.async { result(nil) }
         }
     }
 
-    private func switchCameraNative(useFront: Bool, result: @escaping FlutterResult) {
-        print("[CameraPlatformView-\(viewId)] switchCameraNative called. Requested front: \(useFront). Current: \(currentCameraPosition == .front)")
-        
+    private func switchCameraNative(
+        useFront: Bool,
+        result: @escaping FlutterResult
+    ) {
+        print(
+            "[CameraPlatformView-\(viewId)] switchCameraNative called. Requested front: \(useFront). Current: \(currentCameraPosition == .front)"
+        )
+
         let newPosition: AVCaptureDevice.Position = useFront ? .front : .back
-        
-        if newPosition == currentCameraPosition && (captureSession?.isRunning ?? false) && !isCameraPausedManually {
-            print("[CameraPlatformView-\(viewId)] No camera switch needed. Already on \(newPosition == .front ? "Front" : "Back") and running.")
+
+        if newPosition == currentCameraPosition
+            && (captureSession?.isRunning ?? false) && !isCameraPausedManually
+        {
+            print(
+                "[CameraPlatformView-\(viewId)] No camera switch needed. Already on \(newPosition == .front ? "Front" : "Back") and running."
+            )
             DispatchQueue.main.async { result(nil) }
             return
         }
-        
+
         currentCameraPosition = newPosition
-        print("[CameraPlatformView-\(viewId)] Set currentCameraPosition to \(currentCameraPosition == .front ? "Front" : "Back").")
-        
+        print(
+            "[CameraPlatformView-\(viewId)] Set currentCameraPosition to \(currentCameraPosition == .front ? "Front" : "Back")."
+        )
+
         if isCameraPausedManually {
-            print("[CameraPlatformView-\(viewId)] Camera is manually paused. New camera selection will apply when resumed by the new view instance.")
+            print(
+                "[CameraPlatformView-\(viewId)] Camera is manually paused. New camera selection will apply when resumed by the new view instance."
+            )
         } else {
-            print("[CameraPlatformView-\(viewId)] Switch command received. Flutter will recreate view with new camera setting.")
+            print(
+                "[CameraPlatformView-\(viewId)] Switch command received. Flutter will recreate view with new camera setting."
+            )
         }
-        
+
         DispatchQueue.main.async { result(nil) }
     }
-    
+
     deinit {
         isDeinitializing = true
         print("[CameraPlatformView-\(viewId)] DEINIT CALLED")
@@ -385,22 +831,31 @@ class CameraPlatformView: NSObject, FlutterPlatformView, AVCapturePhotoCaptureDe
         sessionQueue.async {
             if sessionToStop?.isRunning ?? false {
                 sessionToStop?.stopRunning()
-                print("[CameraPlatformView-\(localViewId)] Session stopped asynchronously in deinit.")
+                print(
+                    "[CameraPlatformView-\(localViewId)] Session stopped asynchronously in deinit."
+                )
             }
         }
-        
+
         DispatchQueue.main.async {
             channelToNil?.setMethodCallHandler(nil)
-            
-            if hostViewToClean.window != nil || hostViewToClean.superview != nil {
+
+            if hostViewToClean.window != nil || hostViewToClean.superview != nil
+            {
                 hostViewToClean.previewLayer?.removeFromSuperlayer()
-                print("[CameraPlatformView-\(localViewId)] DEINIT: hostView.previewLayer removed from superlayer.")
+                print(
+                    "[CameraPlatformView-\(localViewId)] DEINIT: hostView.previewLayer removed from superlayer."
+                )
             } else {
-                print("[CameraPlatformView-\(localViewId)] DEINIT: hostView not in window/superview, layer might already be gone.")
+                print(
+                    "[CameraPlatformView-\(localViewId)] DEINIT: hostView not in window/superview, layer might already be gone."
+                )
             }
             hostViewToClean.previewLayer = nil
-            
-            print("[CameraPlatformView-\(localViewId)] MethodChannel handler nillified and previewLayer cleaned on main thread.")
+
+            print(
+                "[CameraPlatformView-\(localViewId)] MethodChannel handler nillified and previewLayer cleaned on main thread."
+            )
         }
     }
 }

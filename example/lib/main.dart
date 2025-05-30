@@ -95,32 +95,31 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       body: Center(
-        child:
-            _isLoading
-                ? CircularProgressIndicator()
-                : _isPermissionGranted
+        child: _isLoading
+            ? CircularProgressIndicator()
+            : _isPermissionGranted
                 ? CameraPreviewView(
-                  setCameraController: (controller) {
-                    _cameraController = controller;
-                  },
-                  cameraPreviewFit: CameraPreviewFit.contain,
-                  isFrontCamera: false,
-                )
+                    setCameraController: (controller) {
+                      _cameraController = controller;
+                    },
+                    cameraPreviewFit: CameraPreviewFit.contain,
+                    isFrontCamera: false,
+                  )
                 : Text('Vui lòng cấp quyền camera trong cài đặt ứng dụng.'),
       ),
-      floatingActionButton:
-          _cameraController != null && _isPermissionGranted && !_isCameraPaused
-              ? FloatingActionButton(
-                onPressed: () async {
-                  final path = await _cameraController?.captureImage();
-                  if (path != null && mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ảnh đã lưu tại: $path')));
-                    // Ở đây bạn có thể điều hướng đến màn hình hiển thị ảnh
-                  }
-                },
-                child: Icon(Icons.camera_alt),
-              )
-              : null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _cameraController != null && _isPermissionGranted
+            ? () async {
+                final path = await _cameraController?.captureImage();
+                if (path != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ảnh đã lưu tại: $path')));
+                  // Ở đây bạn có thể điều hướng đến màn hình hiển thị ảnh
+                }
+              }
+            : null,
+        child: Icon(Icons.camera_alt),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
