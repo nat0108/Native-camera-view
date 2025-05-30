@@ -6,14 +6,6 @@ abstract class _CameraPreviewState {}
 /// State thông báo kèm message
 class _InitState extends _CameraPreviewState {}
 
-/// State thông báo kèm message
-class _AlertState extends _CameraPreviewState {
-  /// Message thông báo
-  final String message;
-
-  _AlertState(this.message);
-}
-
 /// Gọi SnackBar
 class ShowSnackBarState extends _CameraPreviewState {
   String message;
@@ -25,6 +17,3 @@ class DisplayPictureState extends _CameraPreviewState {
   String filePath;
   DisplayPictureState(this.filePath);
 }
-
-/// State màn hình hiển thị giao diện chính
-class _CompleteState extends _CameraPreviewState {}

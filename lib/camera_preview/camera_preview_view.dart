@@ -40,7 +40,7 @@ class CameraPreviewView extends StatelessWidget {
           return;
         }
       },
-      buildWhen: (previous, current) => current is _CompleteState, // chỉ rebuild lại với những state này
+      // buildWhen: (previous, current) => current is _CompleteState, // chỉ rebuild lại với những state này
       builder: (context, state) {
         return _buildBody(bloc); // giao diện chính của màn hình
       },
