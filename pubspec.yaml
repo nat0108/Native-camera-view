@@ -1,7 +1,7 @@
 name: native_camera_view
 description: "A new Flutter project."
 version: 0.0.1
-homepage:
+homepage: https://github.com/nat0108/Native-camera-view
 
 environment:
   sdk: '>=3.2.3 <4.0.0'
