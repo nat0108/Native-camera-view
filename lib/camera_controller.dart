@@ -79,6 +79,25 @@ class CameraController {
     }
   }
 
-// Bạn có thể thêm các phương thức khác ở đây trong tương lai nếu native code hỗ trợ,
-// ví dụ: bật/tắt flash, zoom, lấy các thông số camera, v.v.
+  /// Yêu cầu native code xóa tất cả các ảnh đã được chụp và lưu trong thư mục tạm/cache của plugin.
+  /// Trả về true nếu thành công (hoặc không có gì để xóa), false nếu có lỗi hoặc không thành công.
+  Future<bool> deleteAllCapturedPhotos() async {
+    try {
+      // Gọi method 'deleteAllCapturedPhotos' trên MethodChannel.
+      // Native code sẽ trả về true nếu xóa thành công hoặc không có gì để xóa,
+      // và false nếu có lỗi trong quá trình xóa.
+      final bool? success = await _channel.invokeMethod('deleteAllCapturedPhotos');
+      if (success == true) {
+        debugPrint('CameraController: Tất cả ảnh đã chụp đã được xóa (hoặc không có ảnh nào để xóa).');
+        return true;
+      } else {
+        // Bao gồm trường hợp success là null (lỗi giao tiếp) hoặc false (native báo lỗi)
+        debugPrint('CameraController: Xóa ảnh thất bại hoặc không có phản hồi thành công từ native.');
+        return false;
+      }
+    } on PlatformException catch (e) {
+      debugPrint("CameraController: Lỗi khi gọi deleteAllCapturedPhotos: '${e.message}'.");
+      return false; // Coi như thất bại nếu có PlatformException
+    }
+  }
 }
