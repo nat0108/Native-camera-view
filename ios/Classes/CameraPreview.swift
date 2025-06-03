@@ -66,12 +66,12 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     private var currentPreviewFit: String = "cover"
     private var pendingPhotoCaptureResult: FlutterResult?
 
-    private let sessionQueue = DispatchQueue(label: "com.example.camera_native.sessionQueue.view-\(UUID().uuidString)")
+    private let sessionQueue = DispatchQueue(label: "com.plugin.camera_native.native_camera_view.sessionQueue.view-\(UUID().uuidString)")
     private var isDeinitializing = false
     private var lastPausedFrameImage: UIImage?
 
     private var videoDataOutput: AVCaptureVideoDataOutput?
-    private let videoDataOutputQueue = DispatchQueue(label: "com.example.camera_native.videoDataOutputQueue.view-\(UUID().uuidString)", qos: .userInitiated)
+    private let videoDataOutputQueue = DispatchQueue(label: "com.plugin.camera_native.native_camera_view.videoDataOutputQueue.view-\(UUID().uuidString)", qos: .userInitiated)
     private var lastFrameAsUIImage: UIImage?
     private lazy var ciContext = CIContext()
 
@@ -98,7 +98,7 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
         }
         
         self.methodChannel = FlutterMethodChannel(
-            name: "com.example.camera_native/camera_method_channel_ios_\(viewId)",
+            name: "com.plugin.camera_native.native_camera_view/camera_method_channel_ios_\(viewId)",
             binaryMessenger: messenger
         )
         super.init()
@@ -124,7 +124,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     func view() -> UIView { return _hostView }
 
     private func checkCameraPermissionsAndSetup() {
-        // ... (Giữ nguyên như trước)
         print("[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup CALLED")
         guard !isDeinitializing else {
             print("[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup: Instance is deinitializing, aborting.")
@@ -150,8 +149,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     }
 
     private func setupCamera() {
-        // ... (Giữ nguyên hàm setupCamera như phiên bản đã sửa lỗi 'guard body must not fall through' ở lần trước)
-        // Đảm bảo nó dọn dẹp session cũ (của chính instance này) một cách cẩn thận.
         sessionQueue.async { [weak self] in
             guard let strongSelf = self, !strongSelf.isDeinitializing else {
                 print("[CameraPlatformView-AGGREGATED] setupCamera: strongSelf is nil or deinitializing.")
@@ -255,7 +252,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     }
     
     private func applyPreviewFitToLayer(layer: AVCaptureVideoPreviewLayer) {
-        // ... (Giữ nguyên)
         switch currentPreviewFit.lowercased() {
         case "fitwidth", "fitheight": layer.videoGravity = .resizeAspectFill
         case "contain": layer.videoGravity = .resizeAspect
@@ -265,7 +261,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     }
 
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        // ... (Giữ nguyên)
         print("[CameraPlatformView-\(viewId)] handleMethodCall: \(call.method)")
         guard !isDeinitializing else {
              DispatchQueue.main.async { result(FlutterError(code: "INSTANCE_DEINITIALIZING_HANDLER", message: "Instance is deinitializing.", details: nil)) }
@@ -288,7 +283,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
         }
     }
 
-    // **** SỬA ĐỔI QUAN TRỌNG ****
     private func switchCameraNative(useFront: Bool, result: @escaping FlutterResult) {
         let localViewId = self.viewId // Capture for logging, self might be gone if called weirdly
         print("[CameraPlatformView-\(localViewId)] switchCameraNative received. Requested front: \(useFront). Current instance's position: \(self.currentCameraPosition == .front ? "FRONT" : "BACK")")
@@ -316,7 +310,7 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             result(nil) // Trả về nil để báo hiệu lệnh đã được xử lý thành công ở native.
         }
     }
-    // ... (Các hàm capturePhoto, photoOutput, pauseCameraNative, resumeCameraNative, stopSessionForPauseInternal, và delegate callbacks giữ nguyên như trước)
+
     private func capturePhoto(result: @escaping FlutterResult) {
         guard !isDeinitializing else {
             DispatchQueue.main.async { result(FlutterError(code: "INSTANCE_GONE", message: "Capturing on deinitializing instance", details: nil)) }
