@@ -77,45 +77,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 ```
 
-### 3. Request Camera Permission
-
-```dart
-Future<void> _requestCameraPermission() async {
-  PermissionStatus status;
-  if (Platform.isAndroid) {
-    status = await Permission.camera.request();
-  } else if (Platform.isIOS) {
-    status = await Permission.camera.status;
-    if (status.isDenied || status.isPermanentlyDenied) {
-      // Keep UI to show alert
-    } else {
-      status = PermissionStatus.granted;
-    }
-  } else {
-    if (mounted) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unsupported platform.')),
-      );
-    }
-    return;
-  }
-
-  if (mounted) {
-    setState(() {
-      _isPermissionGranted = status.isGranted;
-      _isLoading = false;
-    });
-    if (!status.isGranted && Platform.isAndroid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Camera permission denied (\${status.name}). View may not function properly.')),
-      );
-    }
-  }
-}
-```
-
-### 4. Use `CameraPreviewView`
+### 3. Use `CameraPreviewView`
 
 Basic example with `StatefulWidget`:
 
@@ -132,15 +94,6 @@ void initState() {
   _initializeCamera();
 }
 
-Future<void> _initializeCamera() async {
-  bool granted = await requestCameraPermission(context);
-  if (mounted) {
-    setState(() {
-      _isPermissionGranted = granted;
-    });
-  }
-}
-
 void _onCameraControllerCreated(CameraController controller) {
   _cameraController = controller;
   if (_isCameraPaused) {
@@ -149,7 +102,7 @@ void _onCameraControllerCreated(CameraController controller) {
 }
 ```
 
-### 5. UI Widget
+### 4. UI Widget
 
 ```dart
 CameraPreviewView(

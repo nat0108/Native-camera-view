@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../camera_controller.dart';
-import '../display_picture_screen.dart';
 
 part 'camera_preview_bloc.dart';
 
