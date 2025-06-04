@@ -171,7 +171,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
         // Lớp trên: Các nút điều khiển
         // Nút chụp ảnh ở dưới cùng, chính giữa
-        if (_cameraController != null && !_isCameraPaused)
+        if (_cameraController != null)
           Positioned(
             bottom: 30.0,
             child: FloatingActionButton(

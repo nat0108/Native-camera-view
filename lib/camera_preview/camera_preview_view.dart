@@ -76,7 +76,7 @@ extension _WidgetBuilder on CameraPreviewView {
     // Nếu là iOS và _isPermissionGranted là true (do giả định ở _requestCameraPermission),
     // hoặc là Android và _isPermissionGranted là true, thì build PlatformView.
     if ((Platform.isIOS && bloc._isPermissionGranted.value) || (Platform.isAndroid && bloc._isPermissionGranted.value)) {
-      final Map<String, dynamic> creationParams = {'cameraPreviewFit': cameraPreviewFit?.name ?? CameraPreviewFit.contain.name, 'isFrontCamera': bloc._cameraController?.isFrontCamera ?? false};
+      final Map<String, dynamic> creationParams = {'cameraPreviewFit': cameraPreviewFit?.name ?? CameraPreviewFit.contain.name, 'isFrontCamera': isFrontCamera ?? false};
       String platformViewKeyBase = "camera_preview_${cameraPreviewFit?.name ?? CameraPreviewFit.contain.name}_front_${isFrontCamera ?? false}";
 
       if (Platform.isAndroid) {
