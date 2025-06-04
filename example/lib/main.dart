@@ -72,7 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _captureImage() async {
-    if (_cameraController == null || (_isCameraPaused && !Platform.isIOS )) {
+    if (_cameraController == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_isCameraPaused ? 'Camera đang tạm dừng.' : 'Controller chưa sẵn sàng.')),
       );

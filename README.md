@@ -7,20 +7,25 @@ The plugin uses `AndroidView` (Android) and `UiKitView` (iOS) to embed the nativ
 
 ## ✨ Features
 
-* **Native Camera Preview**: View live camera feed directly from the device.
-* **Android & iOS Support**: Works reliably across both platforms.
-* **Capture Image**: Saves the image to the app's temporary/cache folder and returns the path.
-* **Pause/Resume Camera**:
+* **High-Performance Native Camera Preview**: Directly embeds the device's camera feed for a smooth, live preview experience.
+* **Android & iOS Support**: Tailored implementations for both Android (using CameraX) and iOS (using AVFoundation) ensuring reliable operation.
+* **Still Image Capture**: Saves the image to the app's temporary/cache folder and returns the path.
+* **Advanced Pause/Resume Functionality**:
+    * iOS: Pausing freezes the preview on its last visible frame. This exact frame can be captured even while the camera is "paused". The underlying camera session is suspended to optimize battery and resource usage.
+    * Android: Pausing unbinds the PreviewUseCase to stop the live feed, while the ImageCaptureUseCase can remain active for photo taking.
+* **Front/Back Camera Switching**: Easily toggle between front and back camera.
+* **Flexible Preview Scaling & Fit Modes:**: `cover`, `contain`, `fitWidth`, `fitHeight`.
+    * `cover`: The preview scales to completely fill the bounds of its view. If the video's aspect ratio differs from the view's, some parts of the video will be cropped to ensure full coverage.
+      * ✨ **WYSIWYG "Cover" Mode Capture (iOS & Android)**: Captured photos taken when the preview is in "cover" mode are automatically cropped to precisely match what the user saw, ensuring a "What You See Is What You Get" experience.
+    * `contain`: The preview scales to fit entirely within the view bounds while maintaining its original aspect ratio. This may result in "letterboxing" (empty bars) if aspect ratios differ.
+      * **iOS Customization**: contain mode intelligently aligns the preview to the top of the view when the video (after being scaled to fill the view's width) is shorter than the view. 
+      * **Android Customization**: contain mode utilizes `PreviewView.ScaleType.FIT_START`, aligning the preview to the top/start of the view.
+    * `fitWidth` / `fitHeight`: Additional scaling options to primarily fit by width or height (e.g., Android supports `FILL_START` / `FILL_END`; on iOS, current behavior for these modes is similar to cover).
 
-    * iOS: Stops preview at the last frame and suspends session to save battery.
-    * Android: Unbinds the PreviewUseCase but still allows capturing.
-* **Switch Camera**: Easily toggle between front and back camera.
-* **Preview Fit Modes**: `cover`, `contain`, `fitWidth`, `fitHeight`.
-
-    * Android: Supports `FIT_START` (align top/left).
-    * iOS: `contain` by default centers the preview.
-* **Tap-to-Focus** *(Android only)*: Tap to focus on a specific area.
-* **Delete Captured Images**: Clear cached images saved by the plugin.
+* **Focus Management**: Tap to focus on a specific area.
+  * Supports continuous auto-focus capabilities on both platforms. 
+  * **Android (beta)**: Includes tap-to-focus interaction, allowing users to specify focus points directly on the preview.
+* **Clear Cached Images (Beta):**: Provides a utility to delete all photos previously captured and stored in the cache directory by this plugin.
 
 ---
 

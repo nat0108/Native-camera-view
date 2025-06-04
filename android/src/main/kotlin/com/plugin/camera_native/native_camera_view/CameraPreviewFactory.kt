@@ -26,6 +26,12 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.io.File
 import java.util.concurrent.TimeUnit
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.graphics.RectF
+import android.media.ExifInterface // Để xử lý orientation nếu cần
+import java.io.FileOutputStream
 
 class CameraPreviewFactory(
     private val binaryMessenger: BinaryMessenger,
@@ -59,6 +65,7 @@ class CameraPlatformView(
 
     private val TAG = "CameraPlatformView"
     private val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+    private var currentPreviewFitStr: String = "cover"
 
     init {
         previewView = PreviewView(context)
@@ -66,7 +73,13 @@ class CameraPlatformView(
         currentLensFacing = if (useFrontInitially) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
         Log.d(TAG, "Initial lens facing for viewId $viewId: ${if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) "FRONT" else "BACK"}")
 
-        applyPreviewFit(this.creationParams) // Truyền creationParams
+        if (creationParams != null) {
+            val fitObj = creationParams["cameraPreviewFit"]
+            if (fitObj is String) {
+                currentPreviewFitStr = fitObj.lowercase(Locale.getDefault())
+            }
+        }
+        applyPreviewFit() // Truyền creationParams
 
         previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -93,6 +106,16 @@ class CameraPlatformView(
                 switchCameraNative(useFront, result)
             }
             "deleteAllCapturedPhotos" -> deleteAllPhotosNative(result)
+            "setPreviewFit" -> { // Xử lý thay đổi fit mode từ Flutter
+                val fitName = call.arguments as? String
+                if (fitName != null) {
+                    currentPreviewFitStr = fitName.lowercase(Locale.getDefault())
+                    applyPreviewFit() // Áp dụng ngay lập tức
+                    result.success(null)
+                } else {
+                    result.error("INVALID_ARGUMENT", "Missing 'fitName'", null)
+                }
+            }
             else -> result.notImplemented()
         }
     }
@@ -129,30 +152,18 @@ class CameraPlatformView(
         }
     }
 
-    private fun applyPreviewFit(creationParams: Map<String?, Any?>?) { // Bỏ @Nullable, dùng kiểu Kotlin nullable
-        var cameraPreviewFitStr = "cover"
-        if (creationParams != null) {
-            val fitObj = creationParams["cameraPreviewFit"]
-            if (fitObj is String) {
-                cameraPreviewFitStr = fitObj
-            }
-        }
-        Log.d(TAG, "Applying cameraPreviewFit for viewId $viewId: $cameraPreviewFitStr with currentLensFacing: $currentLensFacing")
-        when (cameraPreviewFitStr.lowercase(Locale.getDefault())) {
-            "fitwidth" -> previewView.scaleType = PreviewView.ScaleType.FILL_START
-            "fitheight" -> previewView.scaleType = PreviewView.ScaleType.FILL_END
-            "contain" -> previewView.scaleType = PreviewView.ScaleType.FIT_START
-            "cover" -> previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
+    private fun applyPreviewFit() {
+        Log.d(TAG, "Applying cameraPreviewFit for viewId $viewId: $currentPreviewFitStr")
+        previewView.scaleType = when (currentPreviewFitStr) {
+            "fitwidth" -> PreviewView.ScaleType.FILL_START
+            "fitheight" -> PreviewView.ScaleType.FILL_END
+            "contain" -> PreviewView.ScaleType.FIT_START // Hoặc FIT_CENTER nếu muốn căn giữa
+            "cover" -> PreviewView.ScaleType.FILL_CENTER
             else -> {
-                Log.w(TAG, "Unknown cameraPreviewFit value: '$cameraPreviewFitStr' for viewId $viewId. Defaulting to FILL_CENTER.")
-                previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
+                Log.w(TAG, "Unknown cameraPreviewFit value: '$currentPreviewFitStr'. Defaulting to FILL_CENTER.")
+                PreviewView.ScaleType.FILL_CENTER
             }
         }
-//        if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) {
-//            previewView.scaleX = -1.0f
-//        } else {
-//            previewView.scaleX = 1.0f
-//        }
     }
 
     private fun setupCamera() {
@@ -172,7 +183,7 @@ class CameraPlatformView(
     }
 
     private fun bindCameraUseCases(cameraProvider: ProcessCameraProvider) {
-        applyPreviewFit(this.creationParams)
+        applyPreviewFit()
         cameraProvider.unbindAll()
 
         previewUseCase = Preview.Builder().build().also {
@@ -284,18 +295,139 @@ class CameraPlatformView(
             flutterResult.error("UNINITIALIZED", "ImageCapture not initialized.", null)
             return
         }
-        val photoFile = File(context.cacheDir, SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis()) + ".jpg")
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        // Tạo file tạm để lưu ảnh gốc (chưa crop)
+        val originalPhotoFile = File(context.cacheDir, "original_${SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())}.jpg")
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(originalPhotoFile).build()
+
         imageCaptureInstance.takePicture(outputOptions, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(@NonNull outputFileResults: ImageCapture.OutputFileResults) {
-                val filePath = photoFile.getAbsolutePath()
-                flutterResult.success(filePath)
+                val savedUri = outputFileResults.savedUri ?: Uri.fromFile(originalPhotoFile)
+                val originalFilePath = originalPhotoFile.absolutePath
+                Log.d(TAG, "Photo capture saved to: $savedUri, path: $originalFilePath")
+
+                if (currentPreviewFitStr == "cover") {
+                    Log.d(TAG, "Cover mode detected. Attempting to crop photo for viewId $viewId.")
+                    try {
+                        val croppedFilePath = cropPhotoToMatchPreview(originalFilePath, previewView)
+                        if (croppedFilePath != null) {
+                            Log.d(TAG, "Photo cropped successfully: $croppedFilePath")
+                            originalPhotoFile.delete() // Xóa file gốc nếu crop thành công
+                            flutterResult.success(croppedFilePath)
+                        } else {
+                            Log.e(TAG, "Photo cropping failed. Returning original photo for viewId $viewId.")
+                            flutterResult.success(originalFilePath) // Trả về ảnh gốc nếu crop lỗi
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Exception during cropping for viewId $viewId: ${e.message}", e)
+                        flutterResult.success(originalFilePath) // Trả về ảnh gốc nếu có exception
+                    }
+                } else {
+                    Log.d(TAG, "Not in cover mode. Returning original photo for viewId $viewId.")
+                    flutterResult.success(originalFilePath)
+                }
             }
+
             override fun onError(@NonNull exception: ImageCaptureException) {
-                Log.e(TAG, "Photo capture failed: " + exception.message, exception)
-                flutterResult.error("CAPTURE_FAILED", "Photo capture failed: " + exception.message, exception.toString())
+                Log.e(TAG, "Photo capture failed for viewId $viewId: ${exception.message}", exception)
+                flutterResult.error("CAPTURE_FAILED", "Photo capture failed: ${exception.message}", exception.toString())
             }
         })
+    }
+
+    // HÀM MỚI ĐỂ CROP ẢNH
+    private fun cropPhotoToMatchPreview(originalPhotoPath: String, previewView: PreviewView): String? {
+        try {
+            // 1. Lấy Bitmap gốc và xử lý orientation từ EXIF
+            val originalBitmapUnrotated = BitmapFactory.decodeFile(originalPhotoPath)
+            if (originalBitmapUnrotated == null) {
+                Log.e(TAG, "Failed to decode original photo file: $originalPhotoPath")
+                return null
+            }
+
+            val exif = ExifInterface(originalPhotoPath)
+            val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)
+            val matrix = Matrix()
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1.0f, 1.0f)
+                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1.0f, -1.0f)
+                // Các trường hợp phức tạp hơn có thể cần xử lý thêm
+            }
+            val originalBitmap = Bitmap.createBitmap(originalBitmapUnrotated, 0, 0, originalBitmapUnrotated.width, originalBitmapUnrotated.height, matrix, true)
+
+
+            val photoWidth = originalBitmap.width.toFloat()
+            val photoHeight = originalBitmap.height.toFloat()
+            val photoAspectRatio = photoWidth / photoHeight
+
+            val previewWidth = previewView.width.toFloat()
+            val previewHeight = previewView.height.toFloat()
+            if (previewWidth == 0f || previewHeight == 0f) {
+                Log.e(TAG, "PreviewView dimensions are zero. Cannot calculate crop.")
+                return null
+            }
+            val previewAspectRatio = previewWidth / previewHeight
+
+            Log.d(TAG, "Original Photo: ${photoWidth}x$photoHeight (AR: $photoAspectRatio)")
+            Log.d(TAG, "Preview View: ${previewWidth}x$previewHeight (AR: $previewAspectRatio)")
+
+            var cropX = 0f
+            var cropY = 0f
+            var cropWidth = photoWidth
+            var cropHeight = photoHeight
+
+            if (previewView.scaleType == PreviewView.ScaleType.FILL_CENTER) { // "cover" mode
+                if (photoAspectRatio > previewAspectRatio) {
+                    // Ảnh gốc rộng hơn preview (ví dụ: ảnh 16:9, preview 4:3)
+                    // => Preview sẽ fill chiều cao của ảnh, cắt bớt chiều rộng
+                    cropHeight = photoHeight
+                    cropWidth = photoHeight * previewAspectRatio
+                    cropX = (photoWidth - cropWidth) / 2
+                } else if (photoAspectRatio < previewAspectRatio) {
+                    // Ảnh gốc cao hơn preview (ví dụ: ảnh 4:3, preview 16:9)
+                    // => Preview sẽ fill chiều rộng của ảnh, cắt bớt chiều cao
+                    cropWidth = photoWidth
+                    cropHeight = photoWidth / previewAspectRatio
+                    cropY = (photoHeight - cropHeight) / 2
+                }
+                // Nếu tỷ lệ bằng nhau, không cần crop (cropWidth=photoWidth, cropHeight=photoHeight)
+            } else {
+                Log.w(TAG, "Cropping is currently only implemented for 'cover' (FILL_CENTER) mode.")
+                return originalPhotoPath // Trả về ảnh gốc nếu không phải cover
+            }
+
+            if (cropX < 0 || cropY < 0 || cropWidth <= 0 || cropHeight <= 0 || cropX + cropWidth > photoWidth + 0.1 || cropY + cropHeight > photoHeight + 0.1 ) {
+                Log.e(TAG, "Invalid crop rectangle calculated: x=$cropX, y=$cropY, w=$cropWidth, h=$cropHeight for photo ${photoWidth}x${photoHeight}. Returning original.")
+                return originalPhotoPath
+            }
+
+
+            val croppedBitmap = Bitmap.createBitmap(
+                originalBitmap,
+                cropX.toInt(),
+                cropY.toInt(),
+                cropWidth.toInt(),
+                cropHeight.toInt()
+            )
+
+            // Lưu bitmap đã crop
+            val croppedPhotoFile = File(context.cacheDir, "cropped_${SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis())}.jpg")
+            FileOutputStream(croppedPhotoFile).use { out ->
+                croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) // quality 90
+            }
+            croppedBitmap.recycle() // Giải phóng bộ nhớ của bitmap đã crop
+            // originalBitmap.recycle() // originalBitmap đã được xử lý bởi createBitmap với matrix
+
+            Log.d(TAG, "Cropped photo saved to: ${croppedPhotoFile.absolutePath}")
+            return croppedPhotoFile.absolutePath
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during cropPhotoToMatchPreview: ${e.message}", e)
+            return null // Trả về null nếu có lỗi, takePhoto sẽ xử lý trả về ảnh gốc
+        }
     }
 
     private fun deleteAllPhotosNative(result: MethodChannel.Result) {

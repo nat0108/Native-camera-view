@@ -20,12 +20,13 @@
 ## 0.0.4
 
 * **iOS:**
-  * **Critical Stability Fix (Lifecycle & Deinit):** Resolved persistent `EXC_BREAKPOINT` / `EXC_BAD_ACCESS` crashes that occurred during the deinitialization (`deinit`) of the camera view, especially when rapidly switching cameras or changing `cameraPreviewFit` modes.
-    * Implemented a more robust deinitialization sequence by consolidating all AVFoundation object cleanup (stopping session, removing all inputs/outputs, and critically, nilling the `AVCaptureVideoDataOutput`'s delegate) into a **single, strictly ordered, synchronous block on the dedicated `sessionQueue`**.
-    * Ensured the `AVCaptureVideoDataOutput` delegate is nilled *after* the output has been removed from the session, all within the same synchronized `sessionQueue` block, to prevent messaging deallocated or invalid objects.
-  * **Preview Fit Enhancement (`contain` mode):** Implemented top-alignment for the "contain" preview mode. When this mode is active, if the camera video's aspect ratio (when scaled to fill the view's width) results in a height shorter than the view, the preview will now fill the width and align to the top, rather than being vertically centered. This provides more control over the "letterboxed" space.
-  * **Feature: WYSIWYG Photo Cropping for "cover" mode:**
-    * When `cameraPreviewFit` is set to "cover", captured photos are now automatically cropped to precisely match the visible area of the `AVCaptureVideoPreviewLayer`. This ensures the final image is what the user saw in the preview.
-    * Implemented image cropping logic using Core Graphics, calculating the crop rectangle based on normalized coordinates obtained via `AVCaptureVideoPreviewLayer.metadataOutputRectConverted(fromLayerRect:)`.
-    * The photo cropping process is performed asynchronously to maintain UI responsiveness after capture.
-  * Improved internal logging for camera setup, deinitialization, and preview adjustment steps to aid in future debugging.
+  * **Critical Stability Fix (Lifecycle & Deinit):** Resolved persistent `EXC_BREAKPOINT` / `EXC_BAD_ACCESS` crashes during `deinit` by implementing a more robust and synchronized AVFoundation resource cleanup on the `sessionQueue`. This includes corrected order for removing outputs and nilling delegates (delegate is nilled *after* removal from session, all within the same synchronized block).
+  * **Preview Fit Enhancement (`contain` mode):** Implemented top-alignment for the "contain" preview mode. When this mode is active, if the camera video's aspect ratio (when scaled to fill the view's width) results in a height shorter than the view, the preview will now fill the width and align to the top, rather than being vertically centered.
+  * **Feature: WYSIWYG Photo Cropping for "cover" mode (iOS):** Captured photos in "cover" mode are now automatically cropped using Core Graphics to precisely match the visible area of the `AVCaptureVideoPreviewLayer`. This calculation uses `metadataOutputRectConverted(fromLayerRect:)` and the cropping process is performed asynchronously.
+  * **Swift Code Correctness:** Fixed a `'guard' body must not fall through` compiler warning in `setupCamera` by using `throw` for early exit within a `do-catch` block, improving the reliability of camera configuration.
+  * Enhanced internal logging for easier debugging of camera lifecycle and preview adjustments.
+* **Android:**
+  * **Feature: WYSIWYG Photo Cropping for "cover" mode.**
+    * Implemented photo cropping for the "cover" preview fit mode (which uses `PreviewView.ScaleType.FILL_CENTER` on Android). Photos captured using `ImageCapture` are now automatically cropped to match the visible area displayed in the `PreviewView`.
+    * This provides a "What You See Is What You Get" (WYSIWYG) experience, ensuring the final saved image corresponds to what the user saw.
+    * The cropping logic involves `Bitmap` manipulation and correctly handles EXIF orientation of the original image to ensure accurate cropping results.
