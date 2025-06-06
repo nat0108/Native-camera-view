@@ -90,7 +90,6 @@ class _NativeCameraViewState extends State<NativeCameraView> {
     // `key` rất quan trọng. Khi key thay đổi, Flutter sẽ tạo lại native view.
     final key = ValueKey(
         "native_camera_platform_view_${creationParams['cameraPreviewFit']}_${creationParams['isFrontCamera']}");
-    final helleo = Colors.amber.withOpacity(0.5);
     if (Platform.isAndroid) {
       return AndroidView(
         key: key,
