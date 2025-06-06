@@ -1,3 +1,4 @@
-// Export các file bạn đã sao chép vào
+library;
+
 export 'camera_controller.dart';
-export 'camera_preview/camera_preview_view.dart'; // Giả sử bạn đã tạo file này
+export 'camera_preview/native_camera_view.dart';

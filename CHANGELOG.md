@@ -30,3 +30,13 @@
     * Implemented photo cropping for the "cover" preview fit mode (which uses `PreviewView.ScaleType.FILL_CENTER` on Android). Photos captured using `ImageCapture` are now automatically cropped to match the visible area displayed in the `PreviewView`.
     * This provides a "What You See Is What You Get" (WYSIWYG) experience, ensuring the final saved image corresponds to what the user saw.
     * The cropping logic involves `Bitmap` manipulation and correctly handles EXIF orientation of the original image to ensure accurate cropping results.
+
+## 0.0.5
+
+### BREAKING CHANGES
+
+* **Architectural Refactor & State Management:**
+  * **Removed `flutter_bloc`:** The dependency on `flutter_bloc` has been completely removed. State management is now handled by a simpler controller pattern using `ValueNotifier` and `Listenable`. Code using `BlocProvider` or `BlocBuilder` must be migrated.
+  * **Renamed Main Widget:** The primary widget `CameraPreviewView` has been renamed to `NativeCameraView` for better clarity and consistency. All implementations must be updated.
+* **Simplified Package Structure:**
+  * **Removed `plugin_platform_interface`:** This dependency has been removed to streamline the package architecture.

@@ -16,18 +16,18 @@ The plugin uses `AndroidView` (Android) and `UiKitView` (iOS) to embed the nativ
 * **Front/Back Camera Switching**: Easily toggle between front and back camera.
 * **Flexible Preview Scaling & Fit Modes:**: `cover`, `contain`, `fitWidth`, `fitHeight`.
     * `cover`: The preview scales to completely fill the bounds of its view. If the video's aspect ratio differs from the view's, some parts of the video will be cropped to ensure full coverage.
-      * ✨ **WYSIWYG "Cover" Mode Capture (iOS & Android)**: Captured photos taken when the preview is in "cover" mode are automatically cropped to precisely match what the user saw, ensuring a "What You See Is What You Get" experience.
+        * ✨ **WYSIWYG "Cover" Mode Capture (iOS & Android)**: Captured photos taken when the preview is in "cover" mode are automatically cropped to precisely match what the user saw, ensuring a "What You See Is What You Get" experience.
     * `contain`: The preview scales to fit entirely within the view bounds while maintaining its original aspect ratio. This may result in "letterboxing" (empty bars) if aspect ratios differ.
-      * **iOS Customization**: contain mode intelligently aligns the preview to the top of the view when the video (after being scaled to fill the view's width) is shorter than the view. 
-      * **Android Customization**: contain mode utilizes `PreviewView.ScaleType.FIT_START`, aligning the preview to the top/start of the view.
+        * **iOS Customization**: contain mode intelligently aligns the preview to the top of the view when the video (after being scaled to fill the view's width) is shorter than the view.
+        * **Android Customization**: contain mode utilizes `PreviewView.ScaleType.FIT_START`, aligning the preview to the top/start of the view.
     * `fitWidth` / `fitHeight`: Additional scaling options to primarily fit by width or height (e.g., Android supports `FILL_START` / `FILL_END`; on iOS, current behavior for these modes is similar to cover).
 
 * **Focus Management**: Tap to focus on a specific area.
-  * Supports continuous auto-focus capabilities on both platforms. 
-  * **Android (beta)**: Includes tap-to-focus interaction, allowing users to specify focus points directly on the preview.
+    * Supports continuous auto-focus capabilities on both platforms.
+    * **Android (beta)**: Includes tap-to-focus interaction, allowing users to specify focus points directly on the preview.
 * **Clear Cached Images (Beta):**: Provides a utility to delete all photos previously captured and stored in the cache directory by this plugin.
 
----
+<img alt="CleanShot 2025-06-06 at 11.41.15.png" src="CleanShot%202025-06-06%20at%2011.41.15.png" title="camera"/>
 
 ## 🚀 Installation Requirements
 
@@ -55,7 +55,7 @@ Add permissions to `AndroidManifest.xml`:
 <uses-feature android:name="android.hardware.camera" android:required="true" />
 ```
 
----
+
 
 ## 🛠️ How to Use
 
@@ -78,43 +78,28 @@ flutter pub get
 
 ```dart
 import 'package:native_camera_view/native_camera_view.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'dart:io';
 ```
 
-### 3. Use `CameraPreviewView`
+### 3. Use `NativeCameraView`
 
 Basic example with `StatefulWidget`:
 
 ```dart
 CameraController? _cameraController;
-bool _isPermissionGranted = false;
-bool _isCameraPaused = false;
-CameraPreviewFit _currentFit = CameraPreviewFit.cover;
-bool _isFrontCameraSelected = false;
-
-@override
-void initState() {
-  super.initState();
-  _initializeCamera();
-}
 
 void _onCameraControllerCreated(CameraController controller) {
-  _cameraController = controller;
-  if (_isCameraPaused) {
-    _cameraController?.pauseCamera();
-  }
+    _cameraController = controller;
+    print("CameraController created and received!");
 }
 ```
 
 ### 4. UI Widget
 
 ```dart
-CameraPreviewView(
-  key: ValueKey("camera_\${_currentFit.name}_\${_isFrontCameraSelected}"),
-  onCameraControllerCreated: _onCameraControllerCreated,
-  currentFitMode: _currentFit,
-  isFrontCameraSelected: _isFrontCameraSelected,
+NativeCameraView(
+    onControllerCreated: _onCameraControllerCreated,
+    cameraPreviewFit: CameraPreviewFit.cover,
+    isFrontCamera: false,
 )
 ```
 
@@ -136,7 +121,6 @@ await _cameraController?.deleteAllCapturedPhotos();   // Delete cached images
 
 | Parameter                   | Type                         | Description                          |
 | --------------------------- | ---------------------------- | ------------------------------------ |
-| `key`                       | `Key?`                       | Use `ValueKey` to force view rebuild |
 | `onCameraControllerCreated` | `Function(CameraController)` | **Required**                         |
 | `currentFitMode`            | `CameraPreviewFit`           | Default: `cover`                     |
 | `isFrontCameraSelected`     | `bool`                       | Use front camera: `true`             |
@@ -147,4 +131,7 @@ await _cameraController?.deleteAllCapturedPhotos();   // Delete cached images
 ## 🐞 Bug Reports & Contributions
 
 Please report issues or contribute at:
-👉 [https://github.com/nat0108/Native-camera-view](https://github.com/nat0108/Native-camera-view)
+
+🔗 [https://github.com/nat0108/Native-camera-view](https://github.com/nat0108/Native-camera-view)
+
+✉️ nat.anhthai@gmail.com

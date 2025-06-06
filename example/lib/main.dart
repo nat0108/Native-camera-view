@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:native_camera_view/native_camera_view.dart'; // Import plugin của bạn
 import 'dart:io';
+
+import 'package:native_camera_view/native_camera_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -159,11 +160,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return Stack(
       alignment: Alignment.center, // Căn chỉnh các item trong Stack
       children: [
-        // Lớp dưới cùng: CameraPreviewView
         Positioned.fill(
-          child: CameraPreviewView(
-            key: ValueKey("camera_view_${_currentFit.name}_${_isFrontCameraSelected.toString()}"),
-            setCameraController: _onCameraControllerCreated,
+          child: NativeCameraView(
+            onControllerCreated: _onCameraControllerCreated,
             cameraPreviewFit: _currentFit,
             isFrontCamera: _isFrontCameraSelected,
           ),

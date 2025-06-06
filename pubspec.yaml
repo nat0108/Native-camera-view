@@ -1,6 +1,6 @@
 name: native_camera_view
 description: "A Flutter plugin for custom native camera integration. Supports image capture, camera switching, pause/resume, and unique capture of the last frame when paused on iOS & Android."
-version: 0.0.4
+version: 0.0.5
 homepage: https://github.com/nat0108/Native-camera-view
 
 environment:
@@ -10,9 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  plugin_platform_interface: ^2.0.2
   permission_handler: ^11.3.1
-  flutter_bloc: ^9.1.1
 
 dev_dependencies:
   flutter_test:
