@@ -40,3 +40,6 @@
   * **Renamed Main Widget:** The primary widget `CameraPreviewView` has been renamed to `NativeCameraView` for better clarity and consistency. All implementations must be updated.
 * **Simplified Package Structure:**
   * **Removed `plugin_platform_interface`:** This dependency has been removed to streamline the package architecture.
+
+## 0.0.6
+* Update `permission_handler` to `12.0.0+1`
