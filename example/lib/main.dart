@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'dart:io';
 
 import 'package:native_camera_view/native_camera_view.dart';
@@ -156,7 +160,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Widget _buildMainContent() {
-
     return Stack(
       alignment: Alignment.center, // Căn chỉnh các item trong Stack
       children: [
@@ -165,6 +168,26 @@ class _MyHomePageState extends State<MyHomePage> {
             onControllerCreated: _onCameraControllerCreated,
             cameraPreviewFit: _currentFit,
             isFrontCamera: _isFrontCameraSelected,
+            onImageForAnalysis: (analysisImage) {
+              // Chuyển đổi từ AnalysisImage sang InputImage
+              final inputImage = InputImage.fromBytes(
+                bytes: _concatenatePlanes(analysisImage.planes), // Nối các plane lại
+                metadata: InputImageMetadata(
+                  size: Size(
+                    analysisImage.width.toDouble(),
+                    analysisImage.height.toDouble(),
+                  ),
+                  rotation: _inputImageRotationFromDegrees(analysisImage.rotation),
+                  format: InputImageFormat.values.firstWhere((e) => e.rawValue == analysisImage.format),
+                  bytesPerRow: analysisImage.strides.isNotEmpty ? analysisImage.strides[0] : 0,
+                ),
+              );
+
+              // Giờ bạn có thể sử dụng `inputImage` cho các tác vụ của ML Kit
+              // ví dụ:
+              // final faceDetector = GoogleMlKit.vision.faceDetector();
+              // final List<Face> faces = await faceDetector.processImage(inputImage);
+            },
           ),
         ),
 
@@ -176,7 +199,7 @@ class _MyHomePageState extends State<MyHomePage> {
             child: FloatingActionButton(
               onPressed: _captureImage,
               tooltip: 'Chụp ảnh',
-              backgroundColor: Colors.white.withOpacity(0.8),
+              backgroundColor: Colors.white.withValues(alpha: 0.8),
               child: const Icon(Icons.camera_alt, color: Colors.black87, size: 30),
             ),
           ),
@@ -191,14 +214,14 @@ class _MyHomePageState extends State<MyHomePage> {
               onSelected: _changeCameraFit,
               itemBuilder: (BuildContext context) => CameraPreviewFit.values
                   .map((CameraPreviewFit fit) => PopupMenuItem<CameraPreviewFit>(
-                value: fit,
-                child: Text(fit.name),
-              ))
+                        value: fit,
+                        child: Text(fit.name),
+                      ))
                   .toList(),
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.aspect_ratio, color: Colors.white),
@@ -216,21 +239,44 @@ class _MyHomePageState extends State<MyHomePage> {
               label: const Text("Xóa ảnh"),
               onPressed: _deleteAllPhotos,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withOpacity(0.7),
+                  backgroundColor: Colors.red.withValues(alpha: 0.7),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 12)
-              ),
+                  textStyle: const TextStyle(fontSize: 12)),
             ),
           )
       ],
     );
   }
+
+  Uint8List _concatenatePlanes(List<Uint8List> planes) {
+    final WriteBuffer allBytes = WriteBuffer();
+    for (final Uint8List plane in planes) {
+      allBytes.putUint8List(plane);
+    }
+    return allBytes.done().buffer.asUint8List();
+  }
+
+  InputImageRotation _inputImageRotationFromDegrees(int rotation) {
+    switch (rotation) {
+      case 90:
+        return InputImageRotation.rotation90deg;
+      case 180:
+        return InputImageRotation.rotation180deg;
+      case 270:
+        return InputImageRotation.rotation270deg;
+      case 0:
+      default:
+        return InputImageRotation.rotation0deg;
+    }
+  }
 }
 
 class DisplayPictureScreen extends StatelessWidget {
   final String imagePath;
+
   const DisplayPictureScreen({super.key, required this.imagePath});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -239,4 +285,3 @@ class DisplayPictureScreen extends StatelessWidget {
     );
   }
 }
-    

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../camera_controller.dart';
+import '../model/analysis_image.dart';
 import 'native_camera_controller.dart';
 
 
@@ -12,12 +13,14 @@ import 'native_camera_controller.dart';
   final CameraPreviewFit? cameraPreviewFit;
   final bool? isFrontCamera;
   final Function(CameraController controller) onControllerCreated;
+  final Function(AnalysisImage image)? onImageForAnalysis;
 
   const NativeCameraView({
     super.key,
     required this.onControllerCreated,
     this.cameraPreviewFit,
     this.isFrontCamera,
+    this.onImageForAnalysis,
   });
 
   @override
