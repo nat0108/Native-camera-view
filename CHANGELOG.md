@@ -1,5 +1,9 @@
+## 0.0.8
+* Fixed an issue where photos were rotated when shooting in cover and pause camera modes on IOS
+* Fixed the error of switching the front and rear cameras on IOS
+
 ## 0.0.7
-* Fix contain view IOS
+* Fixed contain view IOS
 
 ## 0.0.6
 * Update `permission_handler` to `12.0.0+1`
