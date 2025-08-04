@@ -65,7 +65,7 @@ Add permissions to `AndroidManifest.xml`:
 dependencies:
   flutter:
     sdk: flutter
-  native_camera_view: ^0.0.2 # Replace with the latest version
+  native_camera_view: ^0.0.9 # Replace with the latest version
 ```
 
 Run:
