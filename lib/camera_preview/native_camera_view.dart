@@ -66,9 +66,6 @@ class _NativeCameraViewState extends State<NativeCameraView> {
         return ValueListenableBuilder<bool>(
           valueListenable: _controller.isPermissionGranted,
           builder: (context, isGranted, _) {
-            if (!isGranted) {
-              return _buildPermissionDeniedUI();
-            }
             // Nếu đã có quyền, build camera view
             return _buildPlatformCameraView();
           },
@@ -109,27 +106,5 @@ class _NativeCameraViewState extends State<NativeCameraView> {
     }
 
     return const Center(child: Text("Nền tảng không được hỗ trợ."));
-  }
-
-  Widget _buildPermissionDeniedUI() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Quyền truy cập camera là bắt buộc để sử dụng tính năng này.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => openAppSettings(),
-              child: const Text('Mở Cài đặt'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

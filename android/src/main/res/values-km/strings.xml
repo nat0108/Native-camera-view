@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="permission_denied_title">ការចូលប្រើកាមេរ៉ាត្រូវបានបដិសេធ</string>
+    <string name="permission_denied_message">សូមចូលទៅកាន់ការកំណត់ ដើម្បីផ្តល់សិទ្ធិចូលប្រើកាមេរ៉ាសម្រាប់កម្មវិធី។</string>
+    <string name="open_settings_button">បើកការកំណត់</string>
+    <string name="close_button">បិទ</string>
+</resources>

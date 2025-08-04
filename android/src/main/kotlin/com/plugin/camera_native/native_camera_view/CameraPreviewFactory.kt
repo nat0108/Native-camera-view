@@ -1,37 +1,44 @@
 // File: android/app/src/main/kotlin/com/plugin/camera_native/native_camera_view/CameraPreviewFactory.kt
 package com.plugin.camera_native.native_camera_view // Cập nhật package name
-
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.app.Activity
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.annotation.NonNull
+import androidx.core.app.ActivityCompat
+import androidx.appcompat.app.AlertDialog
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.google.common.util.concurrent.ListenableFuture
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
-import androidx.camera.core.*
-import androidx.core.content.ContextCompat
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import android.util.Log
-import com.google.common.util.concurrent.ListenableFuture
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.io.File
 import java.util.concurrent.TimeUnit
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.graphics.RectF
-import android.media.ExifInterface // Để xử lý orientation nếu cần
-import java.io.FileOutputStream
+import android.media.ExifInterface
 
 class CameraPreviewFactory(
     private val binaryMessenger: BinaryMessenger,
@@ -51,7 +58,7 @@ class CameraPlatformView(
     private val viewId: Int,
     private val lifecycleOwner: LifecycleOwner,
     private val creationParams: Map<String?, Any?>?
-) : PlatformView, LifecycleOwner by lifecycleOwner {
+) : PlatformView, DefaultLifecycleObserver, LifecycleOwner by lifecycleOwner {
 
     private lateinit var previewView: PreviewView
     private lateinit var cameraExecutor: ExecutorService
@@ -67,8 +74,18 @@ class CameraPlatformView(
     private val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     private var currentPreviewFitStr: String = "cover"
 
+    // Biến để tránh hiển thị nhiều dialog cùng lúc
+    private var isDialogShowing = false
+    private var hasRequestedPermission = false
+
+    companion object {
+        private const val REQUEST_CODE_PERMISSIONS = 10
+    }
+
     init {
         previewView = PreviewView(context)
+        lifecycleOwner.lifecycle.addObserver(this) // Đăng ký observer
+
         val useFrontInitially = creationParams?.get("isFrontCamera") as? Boolean ?: false
         currentLensFacing = if (useFrontInitially) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
         Log.d(TAG, "Initial lens facing for viewId $viewId: ${if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) "FRONT" else "BACK"}")
@@ -92,8 +109,74 @@ class CameraPlatformView(
         }
 
         setupTapToFocus()
-        setupCamera()
     }
+
+    override fun onResume(owner: LifecycleOwner) {
+        super.onResume(owner)
+        Log.d(TAG, "onResume triggered for viewId $viewId. Checking permissions.")
+        checkPermissionsAndSetup()
+    }
+
+    private fun findActivity(): Activity? {
+        var currentContext = context
+        while (currentContext is ContextWrapper) {
+            if (currentContext is Activity) {
+                return currentContext
+            }
+            currentContext = currentContext.baseContext
+        }
+        return null
+    }
+
+    // Logic kiểm tra quyền được cập nhật hoàn toàn
+    private fun checkPermissionsAndSetup() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            // Trường hợp 1: Đã có quyền -> Thiết lập camera
+            setupCamera()
+        } else {
+            val activity = findActivity()
+            if (activity == null) {
+                Log.e(TAG, "Could not find activity to request permissions.")
+                return
+            }
+
+            if (hasRequestedPermission) {
+                // Trường hợp 2: Đã hỏi quyền trước đó và vẫn bị từ chối -> Hiển thị dialog "Mở Cài đặt"
+                showPermissionDeniedDialog()
+            } else {
+                // Trường hợp 3: Chưa hỏi quyền lần nào -> Hiển thị dialog của hệ thống
+                hasRequestedPermission = true
+                ActivityCompat.requestPermissions(
+                    activity,
+                    arrayOf(Manifest.permission.CAMERA),
+                    REQUEST_CODE_PERMISSIONS
+                )
+            }
+        }
+    }
+
+    // Hàm mới để hiển thị dialog khi không có quyền
+    private fun showPermissionDeniedDialog() {
+        if (isDialogShowing) return
+        isDialogShowing = true
+
+        AlertDialog.Builder(context, R.style.RoundedAlertDialog)
+            .setTitle(context.getString(R.string.permission_denied_title))
+            .setMessage(context.getString(R.string.permission_denied_message))
+            .setCancelable(false)
+            .setPositiveButton(context.getString(R.string.open_settings_button)) { _, _ ->
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                val uri = Uri.fromParts("package", context.packageName, null)
+                intent.data = uri
+                context.startActivity(intent)
+                isDialogShowing = false
+            }
+            .setNegativeButton(context.getString(R.string.close_button)) { _, _ ->
+                isDialogShowing = false
+            }
+            .show()
+    }
+
 
     private fun handleMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
@@ -470,6 +553,7 @@ class CameraPlatformView(
 
     override fun dispose() {
         Log.d(TAG, "Disposing CameraPlatformView for viewId $viewId")
+        lifecycleOwner.lifecycle.removeObserver(this)
         isCameraPausedManually = false
         cameraExecutor.shutdown()
         cameraProvider?.unbindAll()

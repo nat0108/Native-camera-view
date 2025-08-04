@@ -75,5 +75,6 @@ dependencies {
 
     implementation "androidx.camera:camera-view:${camerax_version}"
     implementation "androidx.camera:camera-extensions:${camerax_version}"
+    implementation 'androidx.appcompat:appcompat:1.6.1'
 
 }

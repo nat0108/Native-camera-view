@@ -45,25 +45,16 @@ class NativeCameraController {
     debugPrint('PlatformView (id: $id) created. CameraController initialized on channel: $channelName');
   }
 
+  /// SỬA ĐỔI HÀM NÀY ĐỂ XỬ LÝ QUYỀN ĐÚNG CÁCH
   /// Yêu cầu quyền truy cập camera từ người dùng.
   Future<void> requestCameraPermission() async {
     isLoading.value = true;
-    if (Platform.isIOS) {
-      // Đối với iOS, native code sẽ tự xử lý việc xin quyền.
-      // Chúng ta lạc quan coi như quyền đã được cấp để build UI.
-      debugPrint("[Flutter Permission] Skipping Dart permission request for iOS. Native will handle.");
-      isPermissionGranted.value = true;
-    } else if (Platform.isAndroid) {
-      debugPrint("[Flutter Permission] Requesting camera permission on Android...");
-      final status = await Permission.camera.request();
-      debugPrint("[Flutter Permission] Android status received: ${status.name}");
-      isPermissionGranted.value = status.isGranted;
-      if (!status.isGranted) {
-        snackbarMessage.value = 'Quyền truy cập camera bị từ chối (${status.name}).';
-      }
-    } else {
-      snackbarMessage.value = 'Camera không được hỗ trợ trên nền tảng này.';
-    }
+
+    // Đối với CẢ iOS và Android, chúng ta sẽ để cho native view tự xử lý việc
+    // kiểm tra quyền và hiển thị dialog. Vai trò của Flutter chỉ là build native view.
+    debugPrint("[Flutter Permission] Skipping Dart permission request. Native will handle it.");
+    isPermissionGranted.value = true;
+
     isLoading.value = false;
   }
 
