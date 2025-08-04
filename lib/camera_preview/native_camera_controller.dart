@@ -3,7 +3,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 // Import service class giao tiếp với native MethodChannel của bạn
 import '../camera_controller.dart';
