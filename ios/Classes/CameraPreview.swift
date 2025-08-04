@@ -460,13 +460,13 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
                 return
             }
 
-            let title = "Quyền truy cập camera bị từ chối"
-            let message = "Vui lòng vào Cài đặt để cấp quyền truy cập camera cho ứng dụng."
+            let title = "Camera Access Denied"
+            let message = "Please go to Settings to grant camera access for the application."
 
             let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
 
             // Thêm nút "Mở Cài đặt" để đưa người dùng đến thẳng cài đặt của ứng dụng
-            let settingsAction = UIAlertAction(title: "Mở Cài đặt", style: .default) { _ in
+            let settingsAction = UIAlertAction(title: "Open Settings", style: .default) { _ in
                 guard let settingsUrl = URL(string: UIApplication.openSettingsURLString) else { return }
                 if UIApplication.shared.canOpenURL(settingsUrl) {
                     UIApplication.shared.open(settingsUrl)
@@ -475,7 +475,7 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             alertController.addAction(settingsAction)
 
             // Thêm nút "Đóng"
-            let closeAction = UIAlertAction(title: "Đóng", style: .cancel, handler: nil)
+            let closeAction = UIAlertAction(title: "Close", style: .cancel, handler: nil)
             alertController.addAction(closeAction)
 
             // Hiển thị thông báo

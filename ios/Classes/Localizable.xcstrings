@@ -1,0 +1,98 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "close_button" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "km-KH" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "បិទ"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng"
+          }
+        }
+      }
+    },
+    "open_settings_button" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "km-KH" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "បើកការកំណត់"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Cài đặt"
+          }
+        }
+      }
+    },
+    "permission_denied_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please go to Settings to grant camera access for the application."
+          }
+        },
+        "km-KH" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "សូមចូលទៅកាន់ការកំណត់ ដើម្បីផ្តល់សិទ្ធិចូលប្រើកាមេរ៉ាសម្រាប់កម្មវិធី។"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vui lòng vào Cài đặt để cấp quyền truy cập camera cho ứng dụng."
+          }
+        }
+      }
+    },
+    "permission_denied_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera Access Denied"
+          }
+        },
+        "km-KH" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ការចូលប្រើកាមេរ៉ាត្រូវបានបដិសេធ"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quyền truy cập camera bị từ chối"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
