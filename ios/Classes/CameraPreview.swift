@@ -18,7 +18,6 @@ class CameraHostView: UIView {
 }
 
 class CameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
-    // ... (Giữ nguyên)
     private var messenger: FlutterBinaryMessenger
     init(messenger: FlutterBinaryMessenger) {
         self.messenger = messenger
@@ -33,7 +32,6 @@ class CameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
 }
 
 enum CameraSetupError: Error, LocalizedError {
-    // ... (Giữ nguyên)
     case failedToGetCaptureDevice
     case couldNotAddInput
     case couldNotAddPhotoOutput
@@ -67,7 +65,7 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
 
     private let sessionQueue = DispatchQueue(label: "com.plugin.camera_native.native_camera_view.sessionQueue.view-\(UUID().uuidString)")
     private var isDeinitializing = false
-    private var lastPausedFrameImage: UIImage?
+    private var lastPausedFrameCGImage: CGImage?
 
     private var videoDataOutput: AVCaptureVideoDataOutput?
     private let videoDataOutputQueue = DispatchQueue(label: "com.plugin.camera_native.native_camera_view.videoDataOutputQueue.view-\(UUID().uuidString)", qos: .userInitiated)
@@ -124,28 +122,49 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     func view() -> UIView { return _hostView }
 
     private func checkCameraPermissionsAndSetup() {
-        // ... (Giữ nguyên như trước)
         print("[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup CALLED")
         guard !isDeinitializing else {
             print("[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup: Instance is deinitializing, aborting.")
             return
         }
+
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
+            // Quyền đã được cấp, tiếp tục setup camera
             print("[CameraPlatformView-\(viewId)] Permission authorized.")
             self.setupCamera()
+
         case .notDetermined:
+            // Lần đầu tiên hỏi quyền, hệ thống sẽ hiển thị dialog
+            print("[CameraPlatformView-\(viewId)] Permission not determined. Requesting...")
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 guard let strongSelf = self, !strongSelf.isDeinitializing else { return }
                 DispatchQueue.main.async {
-                    if granted { strongSelf.setupCamera() } else { /* Xử lý từ chối */ }
+                    if granted {
+                        strongSelf.setupCamera()
+                    } else {
+                        print("[CameraPlatformView-\(strongSelf.viewId)] Permission denied by user on first request.")
+                        // Có thể hiển thị một thông báo nhẹ nhàng ở đây nếu muốn, hoặc không làm gì cả
+                    }
                 }
             }
-        default:
-            print("[CameraPlatformView-\(viewId)] Camera permission not granted or restricted.")
-            DispatchQueue.main.async {
-                self.methodChannel?.invokeMethod("onError", arguments: "camera_permission_issue")
-            }
+
+        case .denied, .restricted:
+            // Quyền đã bị từ chối trước đó hoặc bị hạn chế bởi phụ huynh/tổ chức
+            print("[CameraPlatformView-\(viewId)] Permission denied previously or is restricted.")
+
+            // HIỂN THỊ THÔNG BÁO NATIVE
+            self.showPermissionDeniedAlert()
+
+            // (Không cần gửi lỗi về Flutter nữa nếu đã hiển thị thông báo ở đây)
+            // DispatchQueue.main.async {
+            //     if let channel = self.methodChannel, !self.isDeinitializing {
+            //         channel.invokeMethod("onError", arguments: "camera_permission_denied_previously")
+            //     }
+            // }
+
+        @unknown default:
+            fatalError("Unknown camera authorization status for viewId: \(viewId)")
         }
     }
 
@@ -255,7 +274,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     }
     
     private func applyPreviewFitToLayer(layer: AVCaptureVideoPreviewLayer) {
-        // ... (Giữ nguyên)
         switch currentPreviewFit.lowercased() {
         case "fitwidth", "fitheight": layer.videoGravity = .resizeAspectFill
         case "contain": layer.videoGravity = .resizeAspect
@@ -265,7 +283,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     }
 
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        // ... (Giữ nguyên)
         print("[CameraPlatformView-\(viewId)] handleMethodCall: \(call.method)")
         guard !isDeinitializing else {
              DispatchQueue.main.async { result(FlutterError(code: "INSTANCE_DEINITIALIZING_HANDLER", message: "Instance is deinitializing.", details: nil)) }
@@ -346,43 +363,84 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
                 return
             }
 
-            if self.isCameraPausedManually {
-                print("[CameraPlatformView-\(viewId)] Attempting to capture PAUSED image.")
-                guard let pausedAndRotatedImage = self.lastPausedFrameImage else {
-                    DispatchQueue.main.async { result(FlutterError(code: "NO_PAUSED_FRAME", message: "Camera is paused, but no last frame was stored/rotated.", details: nil)) }
+        if self.isCameraPausedManually {
+            print("[CameraPlatformView-\(viewId)] Attempting to capture PAUSED image.")
+            
+            // 1. Lấy CGImage thô đã lưu
+            guard let sourceCGImage = self.lastPausedFrameCGImage else {
+                DispatchQueue.main.async { result(FlutterError(code: "NO_PAUSED_FRAME", message: "Camera is paused, but no raw frame was stored.", details: nil)) }
+                return
+            }
+
+            let localViewId = self.viewId
+            let fitModeForCrop = self.currentPreviewFit.lowercased()
+
+            DispatchQueue.main.async { [weak self] in
+                guard let strongSelf = self else {
+                    result(FlutterError(code: "INSTANCE_GONE_CROP_PAUSED", message: "Instance deallocated before processing paused image.", details: nil))
                     return
                 }
                 
-                let localViewId = self.viewId
-                let fitModeForCrop = self.currentPreviewFit.lowercased()
-
+                var cgImageToProcess = sourceCGImage
+                
+                // 2. CROP ẢNH THÔ TRƯỚC (nếu là chế độ 'cover')
                 if fitModeForCrop == "cover" {
-                    print("[CameraPlatformView-\(localViewId)] Paused capture in 'cover' mode. Attempting to crop.")
-                    DispatchQueue.main.async { [weak self] in
-                        guard let strongSelf = self else {
-                            DispatchQueue.main.async { result(FlutterError(code: "INSTANCE_GONE_CROP_PAUSED", message: "Instance deallocated before crop for paused image.", details: nil)) }
-                            return
-                        }
-                        var normalizedCropRect = CGRect(x: 0, y: 0, width: 1, height: 1)
-                        if let previewLayer = strongSelf._hostView.previewLayer {
-                            normalizedCropRect = previewLayer.metadataOutputRectConverted(fromLayerRect: previewLayer.bounds)
-                        }
-                        strongSelf.processAndSaveImage(originalImage: pausedAndRotatedImage,
-                                                       normalizedCropRect: normalizedCropRect,
-                                                       shouldCropBasedOnRect: true,
-                                                       viewId: localViewId,
-                                                       resultCallback: result)
+                    print("[CameraPlatformView-\(localViewId)] Paused capture in 'cover' mode. Cropping first.")
+                    var normalizedCropRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+                    if let previewLayer = strongSelf._hostView.previewLayer {
+                        normalizedCropRect = previewLayer.metadataOutputRectConverted(fromLayerRect: previewLayer.bounds)
                     }
-                } else {
-                    print("[CameraPlatformView-\(localViewId)] Paused capture (Mode: '\(fitModeForCrop)'): Not 'cover'. Saving rotated paused image.")
-                    self.processAndSaveImage(originalImage: pausedAndRotatedImage,
-                                               normalizedCropRect: CGRect(x: 0, y: 0, width: 1, height: 1),
-                                               shouldCropBasedOnRect: false,
-                                               viewId: localViewId,
-                                               resultCallback: result)
+                    
+                    // Chuyển đổi normalized rect thành pixel rect
+                    let originalWidth = CGFloat(sourceCGImage.width)
+                    let originalHeight = CGFloat(sourceCGImage.height)
+                    let pixelCropRect = CGRect(
+                        x: normalizedCropRect.origin.x * originalWidth,
+                        y: normalizedCropRect.origin.y * originalHeight,
+                        width: normalizedCropRect.size.width * originalWidth,
+                        height: normalizedCropRect.size.height * originalHeight
+                    )
+                    
+                    // Thực hiện crop
+                    if let croppedCGImage = sourceCGImage.cropping(to: pixelCropRect) {
+                        cgImageToProcess = croppedCGImage
+                        print("[CameraPlatformView-\(localViewId)] Cropping successful.")
+                    } else {
+                        print("[CameraPlatformView-\(localViewId)] Cropping failed, will use un-cropped image.")
+                    }
                 }
-                return
+                
+                // 3. BIẾN ĐỔI ẢNH ĐÃ CROP (hoặc ảnh gốc nếu không crop)
+                var finalImage: UIImage?
+                
+                if strongSelf.currentCameraPosition == .front {
+                    // Đối với camera trước, xoay, lật ngang và lật dọc
+                    let mirroredAndRotatedImage = UIImage(cgImage: cgImageToProcess, scale: 1.0, orientation: .leftMirrored)
+                    
+                    UIGraphicsBeginImageContextWithOptions(mirroredAndRotatedImage.size, false, mirroredAndRotatedImage.scale)
+                    if let context = UIGraphicsGetCurrentContext() {
+                        context.translateBy(x: 0, y: mirroredAndRotatedImage.size.height)
+                        context.scaleBy(x: 1.0, y: -1.0)
+                        mirroredAndRotatedImage.draw(in: CGRect(x: 0, y: 0, width: mirroredAndRotatedImage.size.width, height: mirroredAndRotatedImage.size.height))
+                        finalImage = UIGraphicsGetImageFromCurrentImageContext()
+                        UIGraphicsEndImageContext()
+                    }
+                    if finalImage == nil { finalImage = mirroredAndRotatedImage } // Fallback
+                    
+                } else { // Camera sau
+                    finalImage = UIImage(cgImage: cgImageToProcess, scale: 1.0, orientation: .right)
+                }
+                
+                // 4. LƯU ẢNH CUỐI CÙNG
+                guard let imageToSave = finalImage else {
+                    result(FlutterError(code: "PROCESS_FAILED", message: "Failed to create final UIImage.", details: nil))
+                    return
+                }
+                
+                strongSelf.saveImageDataAndReturnPath(imageToSave.jpegData(compressionQuality: 0.9), viewId: localViewId, resultCallback: result)
             }
+            return // Kết thúc sớm vì đã xử lý bất đồng bộ
+        }
 
             // Live capture (không pause)
             print("[CameraPlatformView-\(viewId)] Attempting LIVE capture.")
@@ -394,6 +452,36 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
                 photoOutput.capturePhoto(with: photoSettings, delegate: strongSelf)
             }
         }
+
+    private func showPermissionDeniedAlert() {
+        DispatchQueue.main.async {
+            guard let rootViewController = UIApplication.shared.keyWindow?.rootViewController else {
+                print("[CameraPlatformView-\(self.viewId)] Không tìm thấy root view controller để hiển thị thông báo.")
+                return
+            }
+
+            let title = "Quyền truy cập camera bị từ chối"
+            let message = "Vui lòng vào Cài đặt để cấp quyền truy cập camera cho ứng dụng."
+
+            let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+
+            // Thêm nút "Mở Cài đặt" để đưa người dùng đến thẳng cài đặt của ứng dụng
+            let settingsAction = UIAlertAction(title: "Mở Cài đặt", style: .default) { _ in
+                guard let settingsUrl = URL(string: UIApplication.openSettingsURLString) else { return }
+                if UIApplication.shared.canOpenURL(settingsUrl) {
+                    UIApplication.shared.open(settingsUrl)
+                }
+            }
+            alertController.addAction(settingsAction)
+
+            // Thêm nút "Đóng"
+            let closeAction = UIAlertAction(title: "Đóng", style: .cancel, handler: nil)
+            alertController.addAction(closeAction)
+
+            // Hiển thị thông báo
+            rootViewController.present(alertController, animated: true, completion: nil)
+        }
+    }
     
     private func processAndSaveImage(originalImage: UIImage,
                                      normalizedCropRect: CGRect,
@@ -505,27 +593,23 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             }
         }
     
-    
     private func pauseCameraNative(result: @escaping FlutterResult) {
         print("[CameraPlatformView-\(viewId)] pauseCameraNative called.")
         isCameraPausedManually = true
         
-        // Trên iOS, "pause" có nghĩa là dừng session để tiết kiệm pin.
-        // `lastPausedFrameImage` đã được cập nhật liên tục bởi `captureOutput` nên sẽ giữ lại frame cuối.
-        sessionQueue.async { [weak self] in
-            guard let strongSelf = self else {
+        // Khi pause, chúng ta sẽ dừng session. `lastPausedFrameImage` vẫn sẽ được giữ lại.
+        // Logic unbindAll không cần thiết vì setupCamera khi resume sẽ xử lý việc đó.
+        self.sessionQueue.async { [weak self] in
+            guard let strongSelf = self, let session = strongSelf.captureSession else {
                 DispatchQueue.main.async { result(nil) }
                 return
             }
-
-            if let session = strongSelf.captureSession, session.isRunning {
+            
+            if session.isRunning {
                 session.stopRunning()
                 print("[CameraPlatformView-\(strongSelf.viewId)] Session stopped for pause.")
-            } else {
-                print("[CameraPlatformView-\(strongSelf.viewId)] Session was already stopped or nil when pausing.")
             }
             
-            // Báo cho Flutter biết đã pause xong
             DispatchQueue.main.async {
                 result(nil)
             }
@@ -541,52 +625,35 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
 
     private func resumeCameraNative(result: @escaping FlutterResult) {
         print("[CameraPlatformView-\(viewId)] resumeCameraNative called.")
+        guard !isDeinitializing else {
+            result(FlutterError(code: "INSTANCE_GONE", message: "Resuming on deinitializing instance", details: nil))
+            return
+        }
+        
         isCameraPausedManually = false
         
-        // Khi resume, chúng ta chỉ cần khởi động lại session.
-        sessionQueue.async { [weak self] in
-            guard let strongSelf = self, !strongSelf.isDeinitializing else {
-                DispatchQueue.main.async { result(nil) }
-                return
-            }
-
-            if let session = strongSelf.captureSession, !session.isRunning {
-                print("[CameraPlatformView-\(strongSelf.viewId)] Session not running on resume. Starting it.")
-                session.startRunning()
-            } else if strongSelf.captureSession == nil {
-                 // Nếu session bị hủy vì lý do nào đó, hãy thiết lập lại
-                print("[CameraPlatformView-\(strongSelf.viewId)] Session is nil on resume. Re-running setup.")
-                strongSelf.setupCamera()
-            } else {
-                print("[CameraPlatformView-\(strongSelf.viewId)] Session was already running on resume.")
-            }
-            
-            DispatchQueue.main.async { result(nil) }
-        }
+        // Khi resume, thay vì chỉ start lại session cũ, hãy gọi lại setupCamera.
+        // Điều này đảm bảo tất cả các use case (Preview, ImageCapture, VideoDataOutput) được bind lại đúng cách.
+        print("[CameraPlatformView-\(viewId)] Triggering setupCamera on resume.")
+        self.setupCamera()
+        
+        result(nil)
     }
     
     // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
     func captureOutput(
-            _ output: AVCaptureOutput,
-            didOutput sampleBuffer: CMSampleBuffer,
-            from connection: AVCaptureConnection
-        ) {
-            guard !isDeinitializing else { return }
-            guard output == self.videoDataOutput else { return }
-            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-            
-            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-            guard let cgImage = self.ciContext.createCGImage(ciImage, from: ciImage.extent) else { return }
-            
-            // Xoay ảnh về đúng chiều dọc
-            let imageOrientation: UIImage.Orientation = self.currentCameraPosition == .front ? .leftMirrored : .right
-            let rotatedImage = UIImage(cgImage: cgImage, scale: 1.0, orientation: imageOrientation)
-            
-            // LUÔN LUÔN cập nhật lastPausedFrameImage với frame mới nhất đã được xoay.
-            // Đây là nguồn duy nhất cho ảnh chụp khi pause.
-            self.lastPausedFrameImage = rotatedImage
-        }
-    
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        guard !isDeinitializing, output == self.videoDataOutput else { return }
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        
+        // Chỉ lưu lại CGImage thô, không thực hiện bất kỳ phép biến đổi nào ở đây
+        self.lastPausedFrameCGImage = self.ciContext.createCGImage(ciImage, from: ciImage.extent)
+    }
 
     func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard !isDeinitializing else { return }
@@ -658,7 +725,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
         self.currentCameraInput = nil
         self.methodChannel = nil
         self.pendingPhotoCaptureResult = nil
-        self.lastPausedFrameImage = nil
         self.lastFrameAsUIImage = nil
 
         print("[CameraPlatformView-\(currentViewId)] DEINIT: Hoàn tất quá trình giải phóng (synchronous part).")
