@@ -1,3 +1,7 @@
+## 0.0.9
+* Removed `permission_handler`
+* Fixed camera on IOS
+
 ## 0.0.8
 * Fixed an issue where photos were rotated when shooting in cover and pause camera modes on IOS
 * Fixed the error of switching the front and rear cameras on IOS
