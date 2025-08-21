@@ -1,3 +1,6 @@
+## 0.0.10
+* Add `bypassPermissionCheck` parameter to ignore camera permission check
+
 ## 0.0.9
 * Removed `permission_handler`
 * Fixed camera on IOS

@@ -63,6 +63,7 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     private var currentPreviewFit: String = "cover"
     private var pendingPhotoCaptureResult: FlutterResult?
 
+    private var bypassPermissionCheck: Bool = false
     private let sessionQueue = DispatchQueue(label: "com.plugin.camera_native.native_camera_view.sessionQueue.view-\(UUID().uuidString)")
     private var isDeinitializing = false
     private var lastPausedFrameCGImage: CGImage?
@@ -92,6 +93,9 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             }
             if let fitMode = params["cameraPreviewFit"] as? String {
                 self.currentPreviewFit = fitMode
+            }
+            if let bypass = params["bypassPermissionCheck"] as? Bool {
+                self.bypassPermissionCheck = bypass
             }
         }
         
@@ -126,6 +130,13 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
         guard !isDeinitializing else {
             print("[CameraPlatformView-\(viewId)] checkCameraPermissionsAndSetup: Instance is deinitializing, aborting.")
             return
+        }
+
+        //  Kiểm tra biến bypass trước tiên
+        if bypassPermissionCheck {
+            print("[CameraPlatformView-\(viewId)] Permission check is BYPASSED. Proceeding directly to setup.")
+            self.setupCamera()
+            return // Thoát khỏi hàm sớm
         }
 
         switch AVCaptureDevice.authorizationStatus(for: .video) {

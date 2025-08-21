@@ -1,0 +1,6 @@
+framework module native_camera_view {
+  umbrella header "native_camera_view-umbrella.h"
+
+  export *
+  module * { export * }
+}

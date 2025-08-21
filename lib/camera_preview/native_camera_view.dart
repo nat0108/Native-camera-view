@@ -11,12 +11,16 @@ import 'native_camera_controller.dart';
   final CameraPreviewFit? cameraPreviewFit;
   final bool? isFrontCamera;
   final Function(CameraController controller) onControllerCreated;
+  final bool? bypassPermissionCheck;
+
 
   const NativeCameraView({
     super.key,
     required this.onControllerCreated,
     this.cameraPreviewFit,
     this.isFrontCamera,
+    this.bypassPermissionCheck,
+
   });
 
   @override
@@ -81,6 +85,7 @@ class _NativeCameraViewState extends State<NativeCameraView> {
     final creationParams = <String, dynamic>{
       'cameraPreviewFit': widget.cameraPreviewFit?.name ?? 'cover',
       'isFrontCamera': widget.isFrontCamera ?? false,
+      'bypassPermissionCheck': widget.bypassPermissionCheck ?? false,
     };
 
     // `key` rất quan trọng. Khi key thay đổi, Flutter sẽ tạo lại native view.

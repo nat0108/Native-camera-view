@@ -1,0 +1,208 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.plugin.camera_native.native_camera_view_example"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="21"
+9        android:targetSdkVersion="35" />
+10    <!--
+11         The INTERNET permission is required for development. Specifically,
+12         the Flutter tool needs it to communicate with the running application
+13         to allow setting breakpoints, to provide hot reload, etc.
+14    -->
+15    <uses-permission android:name="android.permission.INTERNET" />
+15-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/debug/AndroidManifest.xml:6:5-66
+15-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/debug/AndroidManifest.xml:6:22-64
+16    <uses-permission android:name="android.permission.CAMERA" />
+16-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:2:5-65
+16-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:2:22-62
+17
+18    <uses-feature android:name="android.hardware.camera" />
+18-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:3:5-60
+18-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:3:19-57
+19    <uses-feature
+19-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:4:5-95
+20        android:name="android.hardware.camera.autofocus"
+20-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:4:19-67
+21        android:required="false" />
+21-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:4:68-92
+22    <!--
+23 Required to query activities that can process text, see:
+24         https://developer.android.com/training/package-visibility and
+25         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+26
+27         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin.
+28    -->
+29    <queries>
+29-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:42:5-47:15
+30        <intent>
+30-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:43:9-46:18
+31            <action android:name="android.intent.action.PROCESS_TEXT" />
+31-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:44:13-72
+31-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:44:21-70
+32
+33            <data android:mimeType="text/plain" />
+33-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:45:13-50
+33-->/Users/macos/Documents/src/flutter/native_camera_view/example/android/app/src/main/AndroidManifest.xml:45:19-48
+34        </intent>
+35        <intent>
+35-->[androidx.camera:camera-extensions:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/c9525b2c010ae495d192017cf0672f29/transformed/jetified-camera-extensions-1.4.1/AndroidManifest.xml:23:9-25:18
+36            <action android:name="androidx.camera.extensions.action.VENDOR_ACTION" />
+36-->[androidx.camera:camera-extensions:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/c9525b2c010ae495d192017cf0672f29/transformed/jetified-camera-extensions-1.4.1/AndroidManifest.xml:24:13-86
+36-->[androidx.camera:camera-extensions:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/c9525b2c010ae495d192017cf0672f29/transformed/jetified-camera-extensions-1.4.1/AndroidManifest.xml:24:21-83
+37        </intent>
+38    </queries>
+39
+40    <permission
+40-->[androidx.core:core:1.13.1] /Users/macos/.gradle/caches/8.9/transforms/c2eac80eb374f144a611215a8a1822c3/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
+41        android:name="com.plugin.camera_native.native_camera_view_example.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+41-->[androidx.core:core:1.13.1] /Users/macos/.gradle/caches/8.9/transforms/c2eac80eb374f144a611215a8a1822c3/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
+42        android:protectionLevel="signature" />
+42-->[androidx.core:core:1.13.1] /Users/macos/.gradle/caches/8.9/transforms/c2eac80eb374f144a611215a8a1822c3/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
+43
+44    <uses-permission android:name="com.plugin.camera_native.native_camera_view_example.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+44-->[androidx.core:core:1.13.1] /Users/macos/.gradle/caches/8.9/transforms/c2eac80eb374f144a611215a8a1822c3/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
+44-->[androidx.core:core:1.13.1] /Users/macos/.gradle/caches/8.9/transforms/c2eac80eb374f144a611215a8a1822c3/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
+45
+46    <application
+47        android:name="android.app.Application"
+48        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+48-->[androidx.core:core:1.13.1] /Users/macos/.gradle/caches/8.9/transforms/c2eac80eb374f144a611215a8a1822c3/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
+49        android:debuggable="true"
+50        android:extractNativeLibs="true"
+51        android:icon="@mipmap/ic_launcher"
+52        android:label="native_camera_view_example" >
+53        <activity
+54            android:name="com.plugin.camera_native.native_camera_view_example.MainActivity"
+55            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+56            android:exported="true"
+57            android:hardwareAccelerated="true"
+58            android:launchMode="singleTop"
+59            android:taskAffinity=""
+60            android:theme="@style/LaunchTheme"
+61            android:windowSoftInputMode="adjustResize" >
+62
+63            <!--
+64                 Specifies an Android theme to apply to this Activity as soon as
+65                 the Android process has started. This theme is visible to the user
+66                 while the Flutter UI initializes. After that, this theme continues
+67                 to determine the Window background behind the Flutter UI.
+68            -->
+69            <meta-data
+70                android:name="io.flutter.embedding.android.NormalTheme"
+71                android:resource="@style/NormalTheme" />
+72
+73            <intent-filter>
+74                <action android:name="android.intent.action.MAIN" />
+75
+76                <category android:name="android.intent.category.LAUNCHER" />
+77            </intent-filter>
+78        </activity>
+79        <!--
+80             Don't delete the meta-data below.
+81             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java
+82        -->
+83        <meta-data
+84            android:name="flutterEmbedding"
+85            android:value="2" />
+86
+87        <uses-library
+87-->[androidx.camera:camera-extensions:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/c9525b2c010ae495d192017cf0672f29/transformed/jetified-camera-extensions-1.4.1/AndroidManifest.xml:29:9-31:40
+88            android:name="androidx.camera.extensions.impl"
+88-->[androidx.camera:camera-extensions:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/c9525b2c010ae495d192017cf0672f29/transformed/jetified-camera-extensions-1.4.1/AndroidManifest.xml:30:13-59
+89            android:required="false" />
+89-->[androidx.camera:camera-extensions:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/c9525b2c010ae495d192017cf0672f29/transformed/jetified-camera-extensions-1.4.1/AndroidManifest.xml:31:13-37
+90
+91        <service
+91-->[androidx.camera:camera-camera2:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/cd40b377cade27ed985d47bb38cb7405/transformed/jetified-camera-camera2-1.4.1/AndroidManifest.xml:24:9-33:19
+92            android:name="androidx.camera.core.impl.MetadataHolderService"
+92-->[androidx.camera:camera-camera2:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/cd40b377cade27ed985d47bb38cb7405/transformed/jetified-camera-camera2-1.4.1/AndroidManifest.xml:25:13-75
+93            android:enabled="false"
+93-->[androidx.camera:camera-camera2:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/cd40b377cade27ed985d47bb38cb7405/transformed/jetified-camera-camera2-1.4.1/AndroidManifest.xml:26:13-36
+94            android:exported="false" >
+94-->[androidx.camera:camera-camera2:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/cd40b377cade27ed985d47bb38cb7405/transformed/jetified-camera-camera2-1.4.1/AndroidManifest.xml:27:13-37
+95            <meta-data
+95-->[androidx.camera:camera-camera2:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/cd40b377cade27ed985d47bb38cb7405/transformed/jetified-camera-camera2-1.4.1/AndroidManifest.xml:30:13-32:89
+96                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+96-->[androidx.camera:camera-camera2:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/cd40b377cade27ed985d47bb38cb7405/transformed/jetified-camera-camera2-1.4.1/AndroidManifest.xml:31:17-103
+97                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+97-->[androidx.camera:camera-camera2:1.4.1] /Users/macos/.gradle/caches/8.9/transforms/cd40b377cade27ed985d47bb38cb7405/transformed/jetified-camera-camera2-1.4.1/AndroidManifest.xml:32:17-86
+98        </service>
+99
+100        <uses-library
+100-->[androidx.window:window:1.2.0] /Users/macos/.gradle/caches/8.9/transforms/ee08749379192418eb5dd13d559a1e50/transformed/jetified-window-1.2.0/AndroidManifest.xml:23:9-25:40
+101            android:name="androidx.window.extensions"
+101-->[androidx.window:window:1.2.0] /Users/macos/.gradle/caches/8.9/transforms/ee08749379192418eb5dd13d559a1e50/transformed/jetified-window-1.2.0/AndroidManifest.xml:24:13-54
+102            android:required="false" />
+102-->[androidx.window:window:1.2.0] /Users/macos/.gradle/caches/8.9/transforms/ee08749379192418eb5dd13d559a1e50/transformed/jetified-window-1.2.0/AndroidManifest.xml:25:13-37
+103        <uses-library
+103-->[androidx.window:window:1.2.0] /Users/macos/.gradle/caches/8.9/transforms/ee08749379192418eb5dd13d559a1e50/transformed/jetified-window-1.2.0/AndroidManifest.xml:26:9-28:40
+104            android:name="androidx.window.sidecar"
+104-->[androidx.window:window:1.2.0] /Users/macos/.gradle/caches/8.9/transforms/ee08749379192418eb5dd13d559a1e50/transformed/jetified-window-1.2.0/AndroidManifest.xml:27:13-51
+105            android:required="false" />
+105-->[androidx.window:window:1.2.0] /Users/macos/.gradle/caches/8.9/transforms/ee08749379192418eb5dd13d559a1e50/transformed/jetified-window-1.2.0/AndroidManifest.xml:28:13-37
+106
+107        <provider
+107-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/macos/.gradle/caches/8.9/transforms/a07216adae623efe327999491e57ea1c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:24:9-32:20
+108            android:name="androidx.startup.InitializationProvider"
+108-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/macos/.gradle/caches/8.9/transforms/a07216adae623efe327999491e57ea1c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:25:13-67
+109            android:authorities="com.plugin.camera_native.native_camera_view_example.androidx-startup"
+109-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/macos/.gradle/caches/8.9/transforms/a07216adae623efe327999491e57ea1c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:26:13-68
+110            android:exported="false" >
+110-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/macos/.gradle/caches/8.9/transforms/a07216adae623efe327999491e57ea1c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:27:13-37
+111            <meta-data
+111-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/macos/.gradle/caches/8.9/transforms/a07216adae623efe327999491e57ea1c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:29:13-31:52
+112                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+112-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/macos/.gradle/caches/8.9/transforms/a07216adae623efe327999491e57ea1c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:30:17-78
+113                android:value="androidx.startup" />
+113-->[androidx.lifecycle:lifecycle-process:2.7.0] /Users/macos/.gradle/caches/8.9/transforms/a07216adae623efe327999491e57ea1c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:31:17-49
+114            <meta-data
+114-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+115                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+115-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+116                android:value="androidx.startup" />
+116-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+117        </provider>
+118
+119        <receiver
+119-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+120            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+120-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+121            android:directBootAware="false"
+121-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+122            android:enabled="true"
+122-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+123            android:exported="true"
+123-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+124            android:permission="android.permission.DUMP" >
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+125            <intent-filter>
+125-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+126                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+126-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+126-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+127            </intent-filter>
+128            <intent-filter>
+128-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+129                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+130            </intent-filter>
+131            <intent-filter>
+131-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+132                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+133            </intent-filter>
+134            <intent-filter>
+134-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+135                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+135-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+135-->[androidx.profileinstaller:profileinstaller:1.3.1] /Users/macos/.gradle/caches/8.9/transforms/39af6d4d3927b42b2248f21607bd76b0/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+136            </intent-filter>
+137        </receiver>
+138    </application>
+139
+140</manifest>

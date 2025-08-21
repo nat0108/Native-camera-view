@@ -77,6 +77,7 @@ class CameraPlatformView(
     // Biến để tránh hiển thị nhiều dialog cùng lúc
     private var isDialogShowing = false
     private var hasRequestedPermission = false
+    private var bypassPermissionCheck: Boolean = false
 
     companion object {
         private const val REQUEST_CODE_PERMISSIONS = 10
@@ -88,6 +89,7 @@ class CameraPlatformView(
 
         val useFrontInitially = creationParams?.get("isFrontCamera") as? Boolean ?: false
         currentLensFacing = if (useFrontInitially) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+        bypassPermissionCheck = creationParams?.get("bypassPermissionCheck") as? Boolean ?: false
         Log.d(TAG, "Initial lens facing for viewId $viewId: ${if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) "FRONT" else "BACK"}")
 
         if (creationParams != null) {
@@ -130,6 +132,12 @@ class CameraPlatformView(
 
     // Logic kiểm tra quyền được cập nhật hoàn toàn
     private fun checkPermissionsAndSetup() {
+        if (bypassPermissionCheck) {
+            Log.d(TAG, "Permission check is BYPASSED for viewId $viewId. Proceeding to setup camera.")
+            setupCamera()
+            return // Thoát khỏi hàm sớm
+        }
+
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             // Trường hợp 1: Đã có quyền -> Thiết lập camera
             setupCamera()

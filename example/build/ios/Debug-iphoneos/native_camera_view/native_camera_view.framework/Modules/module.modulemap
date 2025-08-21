@@ -1,0 +1,11 @@
+framework module native_camera_view {
+  umbrella header "native_camera_view-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module native_camera_view.Swift {
+  header "native_camera_view-Swift.h"
+  requires objc
+}

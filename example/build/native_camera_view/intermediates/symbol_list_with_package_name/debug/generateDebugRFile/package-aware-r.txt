@@ -1,0 +1,1 @@
+com.plugin.camera_native.native_camera_view

@@ -1,0 +1,1 @@
+/Users/macos/Documents/src/flutter/native_camera_view/example/build/app/intermediates/cxx/Debug/5p5h395q/obj/armeabi-v7a
