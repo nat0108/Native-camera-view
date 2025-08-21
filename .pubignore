@@ -1,0 +1,48 @@
+# File cấu hình của IDE
+.idea/
+.vscode/
+*.iml
+
+# File build tạm của Android và Flutter
+.gradle/
+build/
+android/.gradle
+
+# File tạm của Flutter
+.metadata
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# File ảnh chụp màn hình hoặc file tạm không cần thiết
+CleanShot*.png
+
+# Toàn bộ các file build và cấu hình trong thư mục example
+example/build/
+example/.gradle/
+example/.idea/
+example/.dart_tool/
+example/ios/Pods/* 474 checked-in files are ignored by a `.gitignore`.
+                   Previous versions of Pub would include those in the published package.
+
+                   Consider adjusting your `.gitignore` files to not ignore those files, and if you do not wish to
+                   publish these files use `.pubignore`. See also dart.dev/go/pubignore
+
+                   Files that are checked in while gitignored:
+
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/query/client-agp/cache-v2
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/query/client-agp/cmakeFiles-v1
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/query/client-agp/codemodel-v2
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/reply/cache-v2-5ca4fd9c58fe7df3c666.json
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/reply/cmakeFiles-v1-3121bf9c87c8333ac70f.json
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/reply/codemodel-v2-806986ea5dc58aaf3e4d.json
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/reply/directory-.-Debug-f5ebdc15457944623624.json
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/.cmake/api/v1/reply/index-2025-05-27T03-16-45-0702.json
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/CMakeCache.txt
+                   example/android/app/.cxx/Debug/14d493l7/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CMakeCCompiler.cmake
+                   ...
+
+                 The server may enforce additional checks.
+
+                 Package has 1 warning.
+example/ios/Podfile.lock
+example/ios/.symlinks/
