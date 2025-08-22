@@ -12,7 +12,7 @@ import 'native_camera_controller.dart';
   final bool? isFrontCamera;
   final Function(CameraController controller) onControllerCreated;
   final bool? bypassPermissionCheck;
-
+  final Widget? loadingWidget;
 
   const NativeCameraView({
     super.key,
@@ -20,7 +20,7 @@ import 'native_camera_controller.dart';
     this.cameraPreviewFit,
     this.isFrontCamera,
     this.bypassPermissionCheck,
-
+    this.loadingWidget
   });
 
   @override
@@ -63,7 +63,7 @@ class _NativeCameraViewState extends State<NativeCameraView> {
       valueListenable: _controller.isLoading,
       builder: (context, isLoading, _) {
         if (isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return widget.loadingWidget ?? const Center(child: CircularProgressIndicator());
         }
 
         return ValueListenableBuilder<bool>(

@@ -1,3 +1,6 @@
+## 0.0.11
+* Add `loadingWidget`
+
 ## 0.0.10
 * Add `bypassPermissionCheck` parameter to ignore camera permission check
 

@@ -180,8 +180,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
     }
 
     private func setupCamera() {
-        // ... (Giữ nguyên hàm setupCamera như phiên bản đã sửa lỗi 'guard body must not fall through' ở lần trước)
-        // Đảm bảo nó dọn dẹp session cũ (của chính instance này) một cách cẩn thận.
         sessionQueue.async { [weak self] in
             guard let strongSelf = self, !strongSelf.isDeinitializing else {
                 print("[CameraPlatformView-AGGREGATED] setupCamera: strongSelf is nil or deinitializing.")
@@ -213,20 +211,19 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             newSession.sessionPreset = .photo
 
             var configurationSuccess = true
+            var setupError: Error? // Biến để lưu lỗi nếu có
+
             newSession.beginConfiguration()
             print("[CameraPlatformView-\(viewId)] setupCamera: newSession.beginConfiguration() called.")
 
             do {
                 guard let captureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: targetLens) else {
-                    print("[CameraPlatformView-\(viewId)] setupCamera: Failed to get camera device for \(targetLens).")
                     throw CameraSetupError.failedToGetCaptureDevice
                 }
-                print("[CameraPlatformView-\(viewId)] setupCamera: Obtained capture device: \(captureDevice.localizedName) for \(targetLens)")
-
                 let input = try AVCaptureDeviceInput(device: captureDevice)
                 if newSession.canAddInput(input) { newSession.addInput(input); strongSelf.currentCameraInput = input }
                 else { throw CameraSetupError.couldNotAddInput }
-                
+
                 let newPhotoOutput = AVCapturePhotoOutput()
                 if newSession.canAddOutput(newPhotoOutput) { newSession.addOutput(newPhotoOutput); strongSelf.photoOutput = newPhotoOutput }
                 else { throw CameraSetupError.couldNotAddPhotoOutput }
@@ -243,11 +240,9 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
                     }
                 } else { throw CameraSetupError.couldNotAddVideoDataOutput }
 
-            } catch let errorDescribable as LocalizedError {
-                print("[CameraPlatformView-\(viewId)] setupCamera: Error during I/O setup: \(errorDescribable.localizedDescription)")
-                configurationSuccess = false
             } catch {
-                print("[CameraPlatformView-\(viewId)] setupCamera: Unknown error during I/O setup: \(error)")
+                print("[CameraPlatformView-\(viewId)] setupCamera: Error during I/O setup: \(error.localizedDescription)")
+                setupError = error // Lưu lại lỗi
                 configurationSuccess = false
             }
 
@@ -255,7 +250,13 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             print("[CameraPlatformView-\(viewId)] setupCamera: newSession.commitConfiguration() called. configurationSuccess: \(configurationSuccess)")
 
             guard configurationSuccess else {
-                print("[CameraPlatformView-\(viewId)] setupCamera: Configuration failed. Cleaning up.")
+                print("[CameraPlatformView-\(viewId)] setupCamera: Configuration failed. Cleaning up and sending error to Flutter.")
+                // Gửi tín hiệu lỗi về Flutter
+                let errorMessage = setupError?.localizedDescription ?? "Unknown configuration error."
+                DispatchQueue.main.async {
+                    strongSelf.methodChannel?.invokeMethod("onCameraError", arguments: ["message": errorMessage])
+                }
+
                 if strongSelf.captureSession === newSession { strongSelf.captureSession = nil }
                 strongSelf.videoDataOutput?.setSampleBufferDelegate(nil, queue: nil); strongSelf.videoDataOutput = nil
                 strongSelf.photoOutput = nil; strongSelf.currentCameraInput = nil
@@ -270,7 +271,7 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             } else {
                 print("[CameraPlatformView-\(viewId)] setupCamera: Camera manually paused, not starting session for \(targetLens).")
             }
-            
+
             DispatchQueue.main.async {
                 guard let sSelf = self, !sSelf.isDeinitializing, sSelf.captureSession === newSession else { return }
                 let previewLayer = AVCaptureVideoPreviewLayer(session: newSession)
@@ -280,6 +281,9 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
                 sSelf._hostView.layer.insertSublayer(previewLayer, at: 0)
                 sSelf._hostView.setNeedsLayout()
                 print("[CameraPlatformView-\(sSelf.viewId)] setupCamera: Preview layer configured for \(targetLens).")
+
+                // Gửi tín hiệu camera sẵn sàng về Flutter
+                sSelf.methodChannel?.invokeMethod("onCameraReady", arguments: nil)
             }
         }
     }

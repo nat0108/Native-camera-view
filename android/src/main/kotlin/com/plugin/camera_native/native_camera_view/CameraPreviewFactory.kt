@@ -316,6 +316,7 @@ class CameraPlatformView(
                 Log.w(TAG, "No use cases were actually bound for viewId $viewId")
             }
             Log.d(TAG, "Camera use cases bound for viewId $viewId. Paused: $isCameraPausedManually")
+            methodChannel.invokeMethod("onCameraReady", null)
         } catch (exc: Exception) {
             Log.e(TAG, "Failed to bind camera use cases for viewId $viewId: ${exc.message}", exc)
             this.camera = null
