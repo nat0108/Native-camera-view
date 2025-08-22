@@ -25,7 +25,7 @@ class NativeCameraController {
 
   /// Constructor: Nhận callback và bắt đầu xin quyền ngay lập tức.
   NativeCameraController({required this.onControllerCreated}) {
-    requestCameraPermission();
+    // requestCameraPermission();
   }
 
   // --- Các phương thức logic ---
@@ -38,12 +38,11 @@ class NativeCameraController {
     final platformChannel = MethodChannel(channelName);
     _nativeServiceController = CameraController(channel: platformChannel);
 
-    // --- BẮT ĐẦU THAY ĐỔI ---
-    // Đăng ký lắng nghe các lệnh gọi từ native
     platformChannel.setMethodCallHandler(_handleNativeMethodCall);
-    // --- KẾT THÚC THAY ĐỔI ---
 
     onControllerCreated(_nativeServiceController!);
+
+    _nativeServiceController!.initialize();
 
     debugPrint('PlatformView (id: $id) created. CameraController initialized on channel: $channelName');
   }
@@ -51,14 +50,24 @@ class NativeCameraController {
   Future<void> _handleNativeMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'onCameraReady':
-      // Native báo camera đã sẵn sàng -> ẩn loading
+        // Native báo camera đã sẵn sàng -> ẩn loading
         if (isLoading.value) {
-          // isLoading.value = false;
+          isLoading.value = false;
           debugPrint("Native camera is ready. Hiding loading indicator.");
         }
         break;
+      case 'onCameraError':
+        // Native báo có lỗi -> ẩn loading và hiển thị thông báo
+        if (isLoading.value) {
+          isLoading.value = false;
+        }
+        final Map? args = call.arguments as Map?;
+        final String message = args?['message'] ?? "Unknown camera error";
+        snackbarMessage.value = "Camera Error: $message";
+        debugPrint("Native camera failed to initialize: $message");
+        break;
       default:
-      // Bỏ qua các phương thức không xác định
+        // Bỏ qua các phương thức không xác định
         break;
     }
   }

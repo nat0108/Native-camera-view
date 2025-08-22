@@ -58,22 +58,29 @@ class _NativeCameraViewState extends State<NativeCameraView> {
 
   @override
   Widget build(BuildContext context) {
-    // Sử dụng ValueListenableBuilder để rebuild UI khi state thay đổi
-    return ValueListenableBuilder<bool>(
-      valueListenable: _controller.isLoading,
-      builder: (context, isLoading, _) {
-        if (isLoading) {
-          return widget.loadingWidget ?? const Center(child: CircularProgressIndicator());
-        }
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Lớp 1: Camera View luôn được build ở dưới cùng
+        // Điều này đảm bảo onPlatformViewCreated sẽ được gọi để bắt đầu quá trình khởi tạo.
+        _buildPlatformCameraView(),
 
-        return ValueListenableBuilder<bool>(
-          valueListenable: _controller.isPermissionGranted,
-          builder: (context, isGranted, _) {
-            // Nếu đã có quyền, build camera view
-            return _buildPlatformCameraView();
+        // Lớp 2: Lớp loading nằm đè lên trên, được điều khiển bởi ValueListenableBuilder
+        ValueListenableBuilder<bool>(
+          valueListenable: _controller.isLoading,
+          builder: (context, isLoading, _) {
+            // Nếu đang loading, hiển thị widget loading.
+            // Nếu không, hiển thị một widget trống để lớp này biến mất.
+            if (isLoading) {
+              return Positioned.fill(
+                child: widget.loadingWidget ?? const Center(child: CircularProgressIndicator()),
+              );
+            } else {
+              return const SizedBox.shrink();
+            }
           },
-        );
-      },
+        ),
+      ],
     );
   }
 

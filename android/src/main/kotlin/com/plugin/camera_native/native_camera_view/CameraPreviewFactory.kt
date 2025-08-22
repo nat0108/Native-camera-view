@@ -116,7 +116,7 @@ class CameraPlatformView(
     override fun onResume(owner: LifecycleOwner) {
         super.onResume(owner)
         Log.d(TAG, "onResume triggered for viewId $viewId. Checking permissions.")
-        checkPermissionsAndSetup()
+//        checkPermissionsAndSetup()
     }
 
     private fun findActivity(): Activity? {
@@ -188,6 +188,11 @@ class CameraPlatformView(
 
     private fun handleMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "initialize" -> {
+                Log.d(TAG, "Initialization requested from Flutter for viewId $viewId.")
+                checkPermissionsAndSetup()
+                result.success(null)
+            }
             "captureImage" -> takePhoto(result)
             "pauseCamera" -> pauseCameraNative(result)
             "resumeCamera" -> resumeCameraNative(result)

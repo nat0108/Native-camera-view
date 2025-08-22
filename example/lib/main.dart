@@ -164,6 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
           child: NativeCameraView(
             onControllerCreated: _onCameraControllerCreated,
             cameraPreviewFit: _currentFit,
+            loadingWidget: Center(child: Text("Hello")),
             isFrontCamera: _isFrontCameraSelected,
           ),
         ),

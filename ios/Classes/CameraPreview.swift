@@ -120,7 +120,6 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
         })
         
         print("[CameraPlatformView-\(viewId)] Parsed arguments: fitMode=\(self.currentPreviewFit), useFront=\(self.currentCameraPosition == .front)")
-        checkCameraPermissionsAndSetup()
     }
 
     func view() -> UIView { return _hostView }
@@ -304,6 +303,10 @@ class CameraPlatformView: NSObject, FlutterPlatformView,
             return
         }
         switch call.method {
+        case "initialize":
+                print("[CameraPlatformView-\(viewId)] Initialization requested from Flutter.")
+                checkCameraPermissionsAndSetup()
+                result(nil)
         case "captureImage": capturePhoto(result: result)
         case "pauseCamera": pauseCameraNative(result: result)
         case "resumeCamera": resumeCameraNative(result: result)

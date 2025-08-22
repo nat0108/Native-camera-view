@@ -1,4 +1,7 @@
 ## 0.0.11
+* Fixed `loadingWidget`
+
+## 0.0.11
 * Add `loadingWidget`
 
 ## 0.0.10

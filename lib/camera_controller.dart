@@ -21,6 +21,14 @@ class CameraController {
   // MethodChannel này phải có tên khớp với tên được đăng ký ở phía native.
   CameraController({required MethodChannel channel}) : _channel = channel;
 
+  Future<void> initialize() async {
+    try {
+      await _channel.invokeMethod('initialize');
+    } on PlatformException catch (e) {
+      debugPrint("CameraController: Failed to send initialize command: '${e.message}'.");
+    }
+  }
+
   /// Yêu cầu native code chụp ảnh.
   /// Trả về đường dẫn (String) của file ảnh đã lưu nếu thành công, ngược lại trả về null.
   Future<String?> captureImage() async {
