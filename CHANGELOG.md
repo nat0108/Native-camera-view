@@ -1,4 +1,7 @@
-## 0.0.11
+## 0.0.13
+* Update widget NativeCameraView
+
+## 0.0.12
 * Fixed `loadingWidget`
 
 ## 0.0.11

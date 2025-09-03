@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:native_camera_view/native_camera_view.dart';
 
 import 'package:native_camera_view/native_camera_view.dart';
 
 void main() {
+  // Đảm bảo rằng các binding của Flutter đã được khởi tạo
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // ✨ BẬT CHẾ ĐỘ EDGE-TO-EDGE ✨
+  // Cho phép ứng dụng vẽ trên toàn bộ màn hình, bao gồm cả khu vực dưới các thanh hệ thống.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  // Làm cho các thanh hệ thống trong suốt để có thể nhìn thấy nội dung camera bên dưới.
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+  ));
+  // ✨ KẾT THÚC THAY ĐỔI ✨
+
   runApp(const MyApp());
 }
 
@@ -38,9 +54,10 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   CameraController? _cameraController;
-  bool _isCameraPaused = false;
 
   CameraPreviewFit _currentFit = CameraPreviewFit.cover;
+  final ValueNotifier<bool> isPaused = ValueNotifier(false);
+
   bool _isFrontCameraSelected = false;
 
   @override
@@ -50,32 +67,28 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _onCameraControllerCreated(CameraController controller) {
     if (mounted) {
-      _cameraController = controller;
+      setState(() {
+        _cameraController = controller;
+      });
       print("Example App: CameraController created and received!");
-      if (_isCameraPaused) {
-        _cameraController?.pauseCamera();
-      }
-      // Cập nhật UI nếu cần, ví dụ bật các nút điều khiển
-      setState(() {});
     }
   }
 
   Future<void> _togglePauseResume() async {
     if (_cameraController == null) return;
-    if (_isCameraPaused) {
+    if (isPaused.value) {
       await _cameraController?.resumeCamera();
+      isPaused.value = false;
     } else {
       await _cameraController?.pauseCamera();
-    }
-    if (mounted) {
-      setState(() => _isCameraPaused = !_isCameraPaused);
+      isPaused.value = true;
     }
   }
 
   Future<void> _captureImage() async {
     if (_cameraController == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isCameraPaused ? 'Camera đang tạm dừng.' : 'Controller chưa sẵn sàng.')),
+        const SnackBar(content: Text('Controller chưa sẵn sàng.')),
       );
       return;
     }
@@ -96,9 +109,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _switchCamera() async {
-    if (_cameraController == null || _isCameraPaused) {
+    if (_cameraController == null || isPaused.value) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isCameraPaused ? 'Resume camera trước.' : 'Controller chưa sẵn sàng.')),
+        SnackBar(content: Text(isPaused.value ? 'Resume camera trước.' : 'Controller chưa sẵn sàng.')),
       );
       return;
     }
@@ -112,7 +125,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _changeCameraFit(CameraPreviewFit? fit) {
-    if (fit == null || _isCameraPaused) return;
+    if (fit == null || (isPaused.value)) return;
     if (mounted) {
       setState(() {
         _currentFit = fit;
@@ -132,26 +145,118 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Camera Plugin (${Platform.operatingSystem})'),
-        actions: [
-          if (_cameraController != null) ...[
-            IconButton(
-              icon: Icon(_isCameraPaused ? Icons.play_arrow : Icons.pause),
-              tooltip: _isCameraPaused ? 'Resume' : 'Pause',
-              onPressed: _togglePauseResume,
-            ),
-            IconButton(
-              icon: const Icon(Icons.cameraswitch_outlined), // Icon rõ ràng hơn
-              tooltip: 'Switch Camera',
-              onPressed: _isCameraPaused ? null : _switchCamera,
-            ),
-          ]
-        ],
-      ),
-      body: _buildMainContent(),
-      // FloatingActionButton sẽ được đặt trong Stack
+    // Sử dụng Stack làm widget gốc để xếp lớp các widget lên nhau
+    return Stack(
+      children: [
+        // LỚP 1: Camera View làm nền, lấp đầy toàn bộ màn hình
+        // Positioned.fill đảm bảo widget này chiếm hết không gian của Stack
+        Positioned.fill(
+          child: NativeCameraView(
+            onControllerCreated: _onCameraControllerCreated,
+            cameraPreviewFit: _currentFit,
+            isFrontCamera: _isFrontCameraSelected,
+          ),
+        ),
+
+        // LỚP 2: Scaffold trong suốt nằm đè lên trên để chứa UI
+        Scaffold(
+          // Làm cho cả Scaffold và AppBar trong suốt để thấy camera bên dưới
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: Text('Camera Plugin (${Platform.operatingSystem})'),
+            elevation: 0, // Bỏ bóng mờ dưới AppBar
+            actions: [
+              if (_cameraController != null)
+              // ✨ Lắng nghe isPaused notifier từ CameraController ✨
+                ValueListenableBuilder<bool>(
+                  valueListenable: isPaused,
+                  builder: (context, isPaused, child) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
+                          tooltip: isPaused ? 'Resume' : 'Pause',
+                          onPressed: _togglePauseResume,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.cameraswitch_outlined),
+                          tooltip: 'Switch Camera',
+                          onPressed: isPaused ? null : _switchCamera,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+            ],
+          ),
+          // Body của Scaffold bây giờ chỉ chứa các nút điều khiển
+          // Chúng ta vẫn dùng Stack bên trong để định vị các nút dễ dàng
+          body: Stack(
+            children: [
+              // Nút chụp ảnh ở dưới cùng, chính giữa
+              if (_cameraController != null)
+                Positioned(
+                  bottom: 30.0,
+                  // Căn giữa theo chiều ngang
+                  left: 0,
+                  right: 0,
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: FloatingActionButton(
+                      onPressed: _captureImage,
+                      tooltip: 'Chụp ảnh',
+                      backgroundColor: Colors.white.withOpacity(0.8),
+                      child: const Icon(Icons.camera_alt, color: Colors.black87, size: 30),
+                    ),
+                  ),
+                ),
+
+              // PopupMenuButton ở góc dưới bên trái để chọn chế độ fit
+              if (_cameraController != null)
+                Positioned(
+                  bottom: 30.0,
+                  left: 30.0,
+                  child: PopupMenuButton<CameraPreviewFit>(
+                    initialValue: _currentFit,
+                    onSelected: _changeCameraFit,
+                    itemBuilder: (BuildContext context) => CameraPreviewFit.values
+                        .map((CameraPreviewFit fit) => PopupMenuItem<CameraPreviewFit>(
+                      value: fit,
+                      child: Text(fit.name),
+                    ))
+                        .toList(),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.aspect_ratio, color: Colors.white),
+                    ),
+                  ),
+                ),
+
+              // Nút xóa ảnh
+              if (_cameraController != null)
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+                    label: const Text("Xóa ảnh"),
+                    onPressed: _deleteAllPhotos,
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.withOpacity(0.7),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        textStyle: const TextStyle(fontSize: 12)),
+                  ),
+                )
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -161,11 +266,15 @@ class _MyHomePageState extends State<MyHomePage> {
       alignment: Alignment.center, // Căn chỉnh các item trong Stack
       children: [
         Positioned.fill(
-          child: NativeCameraView(
-            onControllerCreated: _onCameraControllerCreated,
-            cameraPreviewFit: _currentFit,
-            loadingWidget: Center(child: Text("Hello")),
-            isFrontCamera: _isFrontCameraSelected,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.blue, width: 5.0), // Viền xanh dương, dày 5px
+            ),
+            child: NativeCameraView(
+              onControllerCreated: _onCameraControllerCreated,
+              cameraPreviewFit: _currentFit,
+              isFrontCamera: _isFrontCameraSelected,
+            ),
           ),
         ),
 
@@ -183,7 +292,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
 
         // PopupMenuButton ở góc dưới bên trái để chọn chế độ fit
-        if (_cameraController != null && !_isCameraPaused)
+        if (_cameraController != null)
           Positioned(
             bottom: 30.0,
             left: 30.0,

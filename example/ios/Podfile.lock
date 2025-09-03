@@ -4,14 +4,11 @@ PODS:
     - Flutter
   - native_camera_view (0.0.1):
     - Flutter
-  - permission_handler_apple (9.3.0):
-    - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - native_camera_view (from `.symlinks/plugins/native_camera_view/ios`)
-  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
 
 EXTERNAL SOURCES:
   Flutter:
@@ -20,14 +17,11 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/integration_test/ios"
   native_camera_view:
     :path: ".symlinks/plugins/native_camera_view/ios"
-  permission_handler_apple:
-    :path: ".symlinks/plugins/permission_handler_apple/ios"
 
 SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   native_camera_view: 76c709831c223bf9dc33f0d0617b7ab6ee62cbfc
-  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
 
 PODFILE CHECKSUM: 4305caec6b40dde0ae97be1573c53de1882a07e5
 

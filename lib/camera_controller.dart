@@ -1,6 +1,6 @@
 // File: lib/camera_controller.dart
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show debugPrint; // Chỉ dùng cho debug
+import 'package:flutter/foundation.dart' show debugPrint, ValueNotifier; // Chỉ dùng cho debug
 
 // Enum để định nghĩa các chế độ fit cho camera preview
 enum CameraPreviewFit {
@@ -12,14 +12,37 @@ enum CameraPreviewFit {
 class CameraController {
   final MethodChannel _channel;
 
-  bool _isCameraPaused = false;
-  bool get isCameraPaused => _isCameraPaused;
-
   bool _isFrontCamera = false;
   bool get isFrontCamera => _isFrontCamera;
+
+  final ValueNotifier<bool> isPaused = ValueNotifier(false);
+  final ValueNotifier<bool> isLoading = ValueNotifier(true);
+  final ValueNotifier<String?> errorMessage = ValueNotifier(null);
   // Constructor nhận một MethodChannel đã được khởi tạo.
   // MethodChannel này phải có tên khớp với tên được đăng ký ở phía native.
-  CameraController({required MethodChannel channel}) : _channel = channel;
+  CameraController({required MethodChannel channel}) : _channel = channel {
+    // Lắng nghe các lệnh từ native
+    _channel.setMethodCallHandler(_handleNativeMethodCall);
+  }
+
+  Future<void> _handleNativeMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'onCameraReady':
+        if (isLoading.value) isLoading.value = false;
+        break;
+      case 'onCameraError':
+        if (isLoading.value) isLoading.value = false;
+        final Map? args = call.arguments as Map?;
+        errorMessage.value = args?['message'] ?? "Unknown camera error";
+        break;
+      // case 'onCameraPaused':
+      //   if (!isPaused.value) isPaused.value = true;
+      //   break;
+      // case 'onCameraResumed':
+      //   if (isPaused.value) isPaused.value = false;
+      //   break;
+    }
+  }
 
   Future<void> initialize() async {
     try {
@@ -51,8 +74,8 @@ class CameraController {
     try {
       // Gọi method 'pauseCamera' trên MethodChannel.
       await _channel.invokeMethod('pauseCamera');
+      isPaused.value = true;
       debugPrint('CameraController: Lệnh pause camera đã gửi.');
-      _isCameraPaused = true; // Cập nhật trạng thái tạm dừng
     } on PlatformException catch (e) {
       debugPrint("CameraController: Lỗi khi pause camera: '${e.message}'.");
       // throw Exception("Failed to pause camera: ${e.message}");
@@ -64,8 +87,8 @@ class CameraController {
     try {
       // Gọi method 'resumeCamera' trên MethodChannel.
       await _channel.invokeMethod('resumeCamera');
+      isPaused.value = false;
       debugPrint('CameraController: Lệnh resume camera đã gửi.');
-      _isCameraPaused = false;
     } on PlatformException catch (e) {
       debugPrint("CameraController: Lỗi khi resume camera: '${e.message}'.");
       // throw Exception("Failed to resume camera: ${e.message}");
@@ -107,5 +130,11 @@ class CameraController {
       debugPrint("CameraController: Lỗi khi gọi deleteAllCapturedPhotos: '${e.message}'.");
       return false; // Coi như thất bại nếu có PlatformException
     }
+  }
+
+  void dispose() {
+    isPaused.dispose();
+    isLoading.dispose();
+    _channel.setMethodCallHandler(null);
   }
 }

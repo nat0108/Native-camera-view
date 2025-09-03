@@ -100,7 +100,7 @@ class CameraPlatformView(
         }
         applyPreviewFit() // Truyền creationParams
 
-        previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        previewView.implementationMode = PreviewView.ImplementationMode.PERFORMANCE
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         // Sử dụng package name mới cho channel
