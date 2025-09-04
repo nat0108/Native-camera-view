@@ -1,3 +1,6 @@
+## 0.0.14
+* Fixed camera on Android
+
 ## 0.0.13
 * Update widget NativeCameraView
 

@@ -39,6 +39,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
+import android.graphics.PixelFormat
+import android.view.SurfaceView
 
 class CameraPreviewFactory(
     private val binaryMessenger: BinaryMessenger,
@@ -85,6 +87,17 @@ class CameraPlatformView(
 
     init {
         previewView = PreviewView(context)
+        previewView.post {
+            val surfaceView = previewView.getChildAt(0) as? SurfaceView
+            if (surfaceView != null) {
+                surfaceView.holder.setFormat(PixelFormat.TRANSPARENT)
+                surfaceView.setZOrderMediaOverlay(true)
+                Log.d(TAG, "SurfaceView settings applied for viewId $viewId.")
+            } else {
+                Log.e(TAG, "Could not find SurfaceView inside PreviewView for viewId $viewId.")
+            }
+        }
+
         lifecycleOwner.lifecycle.addObserver(this) // Đăng ký observer
 
         val useFrontInitially = creationParams?.get("isFrontCamera") as? Boolean ?: false
@@ -100,7 +113,8 @@ class CameraPlatformView(
         }
         applyPreviewFit() // Truyền creationParams
 
-        previewView.implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+        //COMPATIBLE PERFORMANCE
+        previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         // Sử dụng package name mới cho channel
@@ -575,4 +589,3 @@ class CameraPlatformView(
         methodChannel.setMethodCallHandler(null)
     }
 }
-    
