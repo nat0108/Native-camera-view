@@ -1,3 +1,6 @@
+## 0.0.16
+* Update readme
+
 ## 0.0.15
 * Added Resolution & Quality Controls
     * **Preview Preset (`previewPreset`):** Set a target resolution for the live preview (`low`, `medium`, `high`, `max`).

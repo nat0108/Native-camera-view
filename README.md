@@ -32,6 +32,8 @@ The plugin uses `AndroidView` (Android) and `UiKitView` (iOS) to embed the nativ
     * **Android (beta)**: Includes tap-to-focus interaction.
 * **Clear Cached Images (Beta)**: Provides a utility to delete all photos captured by this plugin from the cache directory.
 
+![img_1.png](img_1.png)
+![img.png](img.png)
 ## 🚀 Installation
 
 ### iOS
