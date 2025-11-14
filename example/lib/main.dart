@@ -240,9 +240,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               cameraPreviewFit: _currentFit,
               isFrontCamera: _isFrontCameraSelected,
               // NEW: Thêm ví dụ về cài đặt chất lượng (từ prompt trước)
-              previewPreset: CameraResolutionPreset.low,
-              capturePreset: CameraResolutionPreset.low,
-              captureMode: CameraCaptureMode.maximizeQuality,
             ),
           ),
 
