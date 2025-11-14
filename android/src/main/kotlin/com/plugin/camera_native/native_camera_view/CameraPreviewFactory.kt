@@ -41,6 +41,7 @@ import android.graphics.Matrix
 import android.media.ExifInterface
 import android.graphics.PixelFormat
 import android.view.SurfaceView
+import android.util.Size
 
 class CameraPreviewFactory(
     private val binaryMessenger: BinaryMessenger,
@@ -76,6 +77,10 @@ class CameraPlatformView(
     private val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
     private var currentPreviewFitStr: String = "cover"
 
+    private var currentPreviewPresetStr: String? = null
+    private var currentCapturePresetStr: String? = null
+    private var currentCaptureModeStr: String = "minimizeLatency"
+
     // Biến để tránh hiển thị nhiều dialog cùng lúc
     private var isDialogShowing = false
     private var hasRequestedPermission = false
@@ -103,14 +108,19 @@ class CameraPlatformView(
         val useFrontInitially = creationParams?.get("isFrontCamera") as? Boolean ?: false
         currentLensFacing = if (useFrontInitially) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
         bypassPermissionCheck = creationParams?.get("bypassPermissionCheck") as? Boolean ?: false
-        Log.d(TAG, "Initial lens facing for viewId $viewId: ${if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) "FRONT" else "BACK"}")
 
-        if (creationParams != null) {
-            val fitObj = creationParams["cameraPreviewFit"]
-            if (fitObj is String) {
-                currentPreviewFitStr = fitObj.lowercase(Locale.getDefault())
-            }
-        }
+        currentPreviewFitStr = (creationParams?.get("cameraPreviewFit") as? String)?.lowercase(Locale.getDefault()) ?: "cover"
+
+        currentPreviewPresetStr = creationParams?.get("previewPreset") as? String
+        currentCapturePresetStr = creationParams?.get("capturePreset") as? String
+        currentCaptureModeStr = (creationParams?.get("captureMode") as? String) ?: "minimizeLatency" // Mặc định là minimizeLatency
+
+        Log.d(TAG, "Initial lens facing for viewId $viewId: ${if (currentLensFacing == CameraSelector.LENS_FACING_FRONT) "FRONT" else "BACK"}")
+        Log.d(TAG, "Initial settings for viewId $viewId: " +
+                "previewPreset=$currentPreviewPresetStr, " +
+                "capturePreset=$currentCapturePresetStr, " +
+                "captureMode=$currentCaptureModeStr")
+
         applyPreviewFit() // Truyền creationParams
 
         //COMPATIBLE PERFORMANCE
@@ -292,17 +302,53 @@ class CameraPlatformView(
         }, ContextCompat.getMainExecutor(context))
     }
 
+    private fun getTargetResolution(preset: String?): Size? {
+        return when (preset) {
+            "low" -> Size(640, 480)    // SD
+            "medium" -> Size(1280, 720)   // HD
+            "high" -> Size(1920, 1080)  // FHD
+            "max" -> null // Để CameraX chọn độ phân giải cao nhất
+            else -> null // Mặc định (không cài đặt)
+        }
+    }
+
+    // lấy CaptureMode từ chuỗi
+    private fun getCaptureMode(mode: String): Int {
+        return when (mode) {
+            "maximizeQuality" -> ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+            "minimizeLatency" -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+            else -> ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
+        }
+    }
+
     private fun bindCameraUseCases(cameraProvider: ProcessCameraProvider) {
         applyPreviewFit()
         cameraProvider.unbindAll()
 
-        previewUseCase = Preview.Builder().build().also {
+        val previewBuilder = Preview.Builder()
+        getTargetResolution(currentPreviewPresetStr)?.let {
+            previewBuilder.setTargetResolution(it)
+            Log.d(TAG, "Setting PREVIEW resolution to $it for viewId $viewId")
+        }
+        previewUseCase = previewBuilder.build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
 
-        imageCapture = ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-            .build()
+        //Áp dụng cài đặt CaptureMode và độ phân giải cho ImageCapture
+        val imageCaptureBuilder = ImageCapture.Builder()
+
+        // 1. Set Capture Mode
+        val captureMode = getCaptureMode(currentCaptureModeStr)
+        imageCaptureBuilder.setCaptureMode(captureMode)
+        Log.d(TAG, "Setting CAPTURE MODE to $currentCaptureModeStr ($captureMode) for viewId $viewId")
+
+        // 2. Set Capture Resolution
+        getTargetResolution(currentCapturePresetStr)?.let {
+            imageCaptureBuilder.setTargetResolution(it)
+            Log.d(TAG, "Setting CAPTURE resolution to $it for viewId $viewId")
+        }
+
+        imageCapture = imageCaptureBuilder.build()
 
         val cameraSelector = CameraSelector.Builder()
             .requireLensFacing(currentLensFacing)
@@ -339,6 +385,8 @@ class CameraPlatformView(
         } catch (exc: Exception) {
             Log.e(TAG, "Failed to bind camera use cases for viewId $viewId: ${exc.message}", exc)
             this.camera = null
+            val errorDetails = mapOf("message" to (exc.message ?: "Failed to bind use cases. Resolution may not be supported."))
+            methodChannel.invokeMethod("onCameraError", errorDetails)
         }
     }
 

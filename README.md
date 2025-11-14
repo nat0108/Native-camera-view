@@ -1,39 +1,42 @@
 # 📷 Native Camera View - Flutter Plugin
 
-A Flutter plugin to display a native camera preview for Android and iOS, along with basic camera controls.
-The plugin uses `AndroidView` (Android) and `UiKitView` (iOS) to embed the native camera view into the Flutter widget tree.
+[![Pub Version](https://img.shields.io/pub/v/native_camera_view?label=pub.dev)](https://pub.dev/packages/native_camera_view)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-brightgreen)](https://pub.dev/packages/native_camera_view)
+
+A Flutter plugin to display a native camera preview for Android and iOS, along with comprehensive camera controls.
+The plugin uses `AndroidView` (Android) and `UiKitView` (iOS) to embed the native camera view directly into the Flutter widget tree for high performance.
 
 ---
 
 ## ✨ Features
 
-* **High-Performance Native Camera Preview**: Directly embeds the device's camera feed for a smooth, live preview experience.
-* **Android & iOS Support**: Tailored implementations for both Android (using CameraX) and iOS (using AVFoundation) ensuring reliable operation.
-* **Still Image Capture**: Saves the image to the app's temporary/cache folder and returns the path.
-* **Advanced Pause/Resume Functionality**:
-    * iOS: Pausing freezes the preview on its last visible frame. This exact frame can be captured even while the camera is "paused". The underlying camera session is suspended to optimize battery and resource usage.
-    * Android: Pausing unbinds the PreviewUseCase to stop the live feed, while the ImageCaptureUseCase can remain active for photo taking.
-* **Front/Back Camera Switching**: Easily toggle between front and back camera.
-* **Flexible Preview Scaling & Fit Modes:**: `cover`, `contain`, `fitWidth`, `fitHeight`.
-    * `cover`: The preview scales to completely fill the bounds of its view. If the video's aspect ratio differs from the view's, some parts of the video will be cropped to ensure full coverage.
-        * ✨ **WYSIWYG "Cover" Mode Capture (iOS & Android)**: Captured photos taken when the preview is in "cover" mode are automatically cropped to precisely match what the user saw, ensuring a "What You See Is What You Get" experience.
-    * `contain`: The preview scales to fit entirely within the view bounds while maintaining its original aspect ratio. This may result in "letterboxing" (empty bars) if aspect ratios differ.
-        * **iOS Customization**: contain mode intelligently aligns the preview to the top of the view when the video (after being scaled to fill the view's width) is shorter than the view.
-        * **Android Customization**: contain mode utilizes `PreviewView.ScaleType.FIT_START`, aligning the preview to the top/start of the view.
-    * `fitWidth` / `fitHeight`: Additional scaling options to primarily fit by width or height (e.g., Android supports `FILL_START` / `FILL_END`; on iOS, current behavior for these modes is similar to cover).
+* **High-Performance Native Preview**: Directly embeds the device's camera feed for a smooth, lag-free live preview.
+* **Android & iOS Support**: Tailored implementations for both Android (using CameraX) and iOS (using AVFoundation).
+* **Full Resolution & Quality Control**:
+    * **Preview Preset (`previewPreset`):** Set a target resolution for the live preview (`low`, `medium`, `high`, `max`).
+    * **Capture Preset (`capturePreset`):** Set a target resolution for the final photo (`low`, `medium`, `high`, `max`).
+    * **Capture Mode (`captureMode`):** Optimize for speed (`minimizeLatency`) or quality (`maximizeQuality`). `maximizeQuality` enables advanced post-processing like HDR and noise reduction.
+* **Still Image Capture**: Saves the image to the app's cache folder and returns the file path.
+* **Advanced Pause/Resume**:
+    * **iOS**: Pausing freezes the preview on its last visible frame. This exact frame can be captured even while "paused". The underlying camera session is suspended to save battery.
+    * **Android**: Pausing unbinds the Preview use case (stops the feed) while keeping the ImageCapture use case active.
+* **Front/Back Camera Switching**: Easily toggle between front and back cameras.
+* **Flexible Preview Scaling & Fit Modes**: `cover`, `contain`, `fitWidth`, `fitHeight`.
+    * **`cover`**: Scales the preview to completely fill the view. If aspect ratios differ, the video is cropped to fit.
+        * ✨ **WYSIWYG Capture**: Photos taken in `cover` mode are automatically cropped to **precisely match what the user saw**, ensuring a "What You See Is What You Get" experience on both platforms.
+    * **`contain`**: Scales the preview to fit entirely within the view, maintaining its aspect ratio. This may result in "letterboxing" (empty bars).
+    * `fitWidth` / `fitHeight`: Additional scaling options to fit by width or height.
+* **Focus Management**:
+    * Supports continuous auto-focus on both platforms.
+    * **Android (beta)**: Includes tap-to-focus interaction.
+* **Clear Cached Images (Beta)**: Provides a utility to delete all photos captured by this plugin from the cache directory.
 
-* **Focus Management**: Tap to focus on a specific area.
-    * Supports continuous auto-focus capabilities on both platforms.
-    * **Android (beta)**: Includes tap-to-focus interaction, allowing users to specify focus points directly on the preview.
-* **Clear Cached Images (Beta):**: Provides a utility to delete all photos previously captured and stored in the cache directory by this plugin.
-
-![CleanShot 2025-06-06 at 11.41.15.png](CleanShot%202025-06-06%20at%2011.41.15.png)
-
-## 🚀 Installation Requirements
+## 🚀 Installation
 
 ### iOS
 
-Add the following to `ios/Runner/Info.plist`:
+Add the following keys to your `ios/Runner/Info.plist` file:
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -48,7 +51,7 @@ Add the following to `ios/Runner/Info.plist`:
 
 * **Minimum API Level:** 21 (Android 5.0 - due to CameraX usage)
 
-Add permissions to `AndroidManifest.xml`:
+Add the following permission to your `android/app/src/main/AndroidManifest.xml`:
 
 ```xml
 <uses-permission android:name="android.permission.CAMERA" />
@@ -65,7 +68,7 @@ Add permissions to `AndroidManifest.xml`:
 dependencies:
   flutter:
     sdk: flutter
-  native_camera_view: ^0.0.9 # Replace with the latest version
+  native_camera_view: ^0.0.15 # Replace with the latest version
 ```
 
 Run:
@@ -82,50 +85,130 @@ import 'package:native_camera_view/native_camera_view.dart';
 
 ### 3. Use `NativeCameraView`
 
-Basic example with `StatefulWidget`:
+Here is a full example of using the `NativeCameraView` in a `StatefulWidget`
 
 ```dart
-CameraController? _cameraController;
+import 'package.flutter/material.dart';
+import 'package.native_camera_view/native_camera_view.dart';
 
-void _onCameraControllerCreated(CameraController controller) {
-    _cameraController = controller;
-    print("CameraController created and received!");
+class CameraScreen extends StatefulWidget {
+  const CameraScreen({super.key});
+
+  @override
+  State<CameraScreen> createState() => _CameraScreenState();
+}
+
+class _CameraScreenState extends State<CameraScreen> {
+  CameraController? _cameraController;
+  bool _isFrontCamera = false;
+
+  void _onCameraControllerCreated(CameraController controller) {
+    setState(() {
+      _cameraController = controller;
+    });
+    print("Example App: CameraController created!");
+  }
+
+  Future<void> _captureImage() async {
+    if (_cameraController == null) return;
+    try {
+      final path = await _cameraController?.captureImage();
+      print("Image captured at: $path");
+      // Show the image, e.g., in a new screen
+    } catch (e) {
+      print("Failed to capture image: $e");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Camera Example")),
+      body: Stack(
+        children: [
+          NativeCameraView(
+            onControllerCreated: _onCameraControllerCreated,
+            cameraPreviewFit: CameraPreviewFit.cover,
+            isFrontCamera: _isFrontCamera,
+            // --- Quality Settings ---
+            previewPreset: CameraResolutionPreset.high,
+            capturePreset: CameraResolutionPreset.max,
+            captureMode: CameraCaptureMode.maximizeQuality,
+            // --- Optional ---
+            loadingWidget: const Center(child: CircularProgressIndicator()),
+          ),
+          Positioned(
+            bottom: 30,
+            left: 0,
+            right: 0,
+            child: FloatingActionButton(
+              onPressed: _cameraController == null ? null : _captureImage,
+              child: const Icon(Icons.camera_alt),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 ```
 
-### 4. UI Widget
+### ⚙️ Enums & Parameters
 
-```dart
-NativeCameraView(
-    onControllerCreated: _onCameraControllerCreated,
-    cameraPreviewFit: CameraPreviewFit.cover,
-    isFrontCamera: false,
-)
-```
+**Enums**
+
+These enums control the quality and behavior of the camera.
+
+* CameraResolutionPreset:
+
+  * `low` (e.g., 640x480)
+  * `medium` (e.g., 1280x720)
+  * `high` (e.g., 1920x1080)
+  * `max` (Uses the highest available resolution)
+
+* CameraCaptureMode:
+
+  * `minimizeLatency`: Prioritizes capture speed. Disables most post-processing.
+
+  * `maximizeQuality`: Prioritizes photo quality. Enables post-processing like HDR and noise reduction.
+
+* CameraPreviewFit:
+
+  * `cover`, `contain`, `fitWidth`, `fitHeight`
+
+---
+## 📦 `NativeCameraView` Parameters
+
+| Parameter               | Type                           | Description                                                                                     |
+|-------------------------|--------------------------------|-------------------------------------------------------------------------------------------------|
+| `onControllerCreated`   | `Function(CameraController)`   | **Required**. Callback that returns the `CameraController` once the native view is initialized. |
+| `cameraPreviewFit`      | `CameraPreviewFit?`            | How the preview should be scaled. **Default**: `cover`.                                         |
+| `isFrontCamera`         | `bool?`                        | Whether to initially open the front camera. **Default**: `false`.                               |
+| `previewPreset`         | `CameraResolutionPreset?`      | Target resolution for the preview stream. **Default**: `null` (system default).                 |
+| `captureMode`           | `CameraCaptureMode?`           | Optimization mode for capturing photos. **Default**: `minimizeLatency`.                         |
+| `loadingWidget`         | `Widget?`                      | A custom widget to display while the camera is initializing.                                    |
+| `bypassPermissionCheck` | `bool?`                        | (Advanced) Bypasses the default permission request logic. Default: false.                       |
 
 ---
 
 ## 📦 `CameraController` API
 
 ```dart
-final path = await _cameraController?.captureImage(); // Capture photo
-await _cameraController?.pauseCamera();               // Pause preview
-await _cameraController?.resumeCamera();              // Resume preview
-await _cameraController?.switchCamera(true);          // Switch to front camera
-await _cameraController?.deleteAllCapturedPhotos();   // Delete cached images
+// Capture a new photo. Returns the file path.
+final String? path = await _cameraController?.captureImage();
+
+// Pause the camera preview.
+await _cameraController?.pauseCamera();
+
+// Resume the camera preview.
+await _cameraController?.resumeCamera();
+
+// Switch between front (true) and back (false) cameras.
+await _cameraController?.switchCamera(bool useFrontCamera);
+
+// Delete all photos previously captured by this plugin.
+await _cameraController?.deleteAllCapturedPhotos();
 ```
-
----
-
-## ⚙️ CameraPreviewView Parameters
-
-| Parameter                   | Type                         | Description                          |
-| --------------------------- | ---------------------------- | ------------------------------------ |
-| `onCameraControllerCreated` | `Function(CameraController)` | **Required**                         |
-| `currentFitMode`            | `CameraPreviewFit`           | Default: `cover`                     |
-| `isFrontCameraSelected`     | `bool`                       | Use front camera: `true`             |
-| `isCameraPausedParent`      | `bool?`                      | External pause state                 |
-
 ---
 
 ## 🐞 Bug Reports & Contributions

@@ -1,3 +1,9 @@
+## 0.0.15
+* Added Resolution & Quality Controls
+    * **Preview Preset (`previewPreset`):** Set a target resolution for the live preview (`low`, `medium`, `high`, `max`).
+    * **Capture Preset (`capturePreset`):** Set a target resolution for the final photo (`low`, `medium`, `high`, `max`).
+    * **Capture Mode (`captureMode`):** Optimize for speed (`minimizeLatency`) or quality (`maximizeQuality`). `maximizeQuality` enables advanced post-processing like HDR and noise reduction.
+
 ## 0.0.14
 * Fixed camera on Android
 

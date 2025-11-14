@@ -5,12 +5,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../camera_controller.dart';
 
+//đặt độ phân giải
+enum CameraResolutionPreset { low, medium, high, max }
+
+//chế độ chụp ảnh
+enum CameraCaptureMode { minimizeLatency, maximizeQuality }
+
 class NativeCameraView extends StatefulWidget {
   final CameraPreviewFit? cameraPreviewFit;
   final bool? isFrontCamera;
   final Function(CameraController controller) onControllerCreated;
   final bool? bypassPermissionCheck;
   final Widget? loadingWidget;
+
+  final CameraResolutionPreset? previewPreset;
+  final CameraResolutionPreset? capturePreset;
+  final CameraCaptureMode? captureMode;
 
   const NativeCameraView({
     super.key,
@@ -19,6 +29,9 @@ class NativeCameraView extends StatefulWidget {
     this.isFrontCamera,
     this.bypassPermissionCheck,
     this.loadingWidget,
+    this.previewPreset,
+    this.capturePreset,
+    this.captureMode,
   });
 
   @override
@@ -84,6 +97,10 @@ class _NativeCameraViewState extends State<NativeCameraView> {
       'cameraPreviewFit': widget.cameraPreviewFit?.name ?? 'cover',
       'isFrontCamera': widget.isFrontCamera ?? false,
       'bypassPermissionCheck': widget.bypassPermissionCheck ?? false,
+
+      'previewPreset': widget.previewPreset?.name,
+      'capturePreset': widget.capturePreset?.name,
+      'captureMode': widget.captureMode?.name,
     };
 
     final key = ValueKey(
