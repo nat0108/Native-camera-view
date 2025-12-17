@@ -86,6 +86,8 @@ class CameraPlatformView(
     private var hasRequestedPermission = false
     private var bypassPermissionCheck: Boolean = false
 
+    private var isCameraInitialized = false
+    private var lastPermissionRequestTime: Long = 0
     companion object {
         private const val REQUEST_CODE_PERMISSIONS = 10
     }
@@ -139,8 +141,11 @@ class CameraPlatformView(
 
     override fun onResume(owner: LifecycleOwner) {
         super.onResume(owner)
-        Log.d(TAG, "onResume triggered for viewId $viewId. Checking permissions.")
-//        checkPermissionsAndSetup()
+        // Nếu dialog của mình đang hiện thì không làm gì cả
+        if (isDialogShowing) return
+
+        // Kiểm tra quyền
+        checkPermissionsAndSetup()
     }
 
     private fun findActivity(): Activity? {
@@ -157,33 +162,52 @@ class CameraPlatformView(
     // Logic kiểm tra quyền được cập nhật hoàn toàn
     private fun checkPermissionsAndSetup() {
         if (bypassPermissionCheck) {
-            Log.d(TAG, "Permission check is BYPASSED for viewId $viewId. Proceeding to setup camera.")
             setupCamera()
-            return // Thoát khỏi hàm sớm
+            return
         }
 
+        // 1. Nếu ĐÃ có quyền -> Setup ngay
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            // Trường hợp 1: Đã có quyền -> Thiết lập camera
-            setupCamera()
-        } else {
-            val activity = findActivity()
-            if (activity == null) {
-                Log.e(TAG, "Could not find activity to request permissions.")
-                return
+            if (!isCameraInitialized) {
+                Log.d(TAG, "Permission granted. Setting up camera.")
+                setupCamera()
             }
+            return
+        }
 
-            if (hasRequestedPermission) {
-                // Trường hợp 2: Đã hỏi quyền trước đó và vẫn bị từ chối -> Hiển thị dialog "Mở Cài đặt"
-                showPermissionDeniedDialog()
-            } else {
-                // Trường hợp 3: Chưa hỏi quyền lần nào -> Hiển thị dialog của hệ thống
-                hasRequestedPermission = true
-                ActivityCompat.requestPermissions(
-                    activity,
-                    arrayOf(Manifest.permission.CAMERA),
-                    REQUEST_CODE_PERMISSIONS
-                )
-            }
+        // 2. Nếu CHƯA có quyền -> Xử lý xin quyền
+        val activity = findActivity()
+        if (activity == null) return
+
+        // Reset trạng thái init vì chưa có quyền
+        isCameraInitialized = false
+
+        // Kiểm tra xem có nên hiện UI giải thích không (True nếu user từ chối 1 lần, False nếu từ chối "Don't ask again" hoặc lần đầu)
+        val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
+
+        // CHỐT CHẶN QUAN TRỌNG:
+        // Nếu vừa mới xin quyền cách đây dưới 2 giây, thì BỎ QUA logic hiển thị dialog cài đặt.
+        // Lý do: onResume có thể bị gọi chồng chéo ngay khi dialog hệ thống vừa hiện lên.
+        if (System.currentTimeMillis() - lastPermissionRequestTime < 2000) {
+            Log.d(TAG, "Just requested permission recently. Ignoring duplicate check in onResume.")
+            return
+        }
+
+        if (hasRequestedPermission && !shouldShowRationale) {
+            // Trường hợp: Đã xin trước đó + Hệ thống bảo không cần hiện rationale
+            // -> Nghĩa là User đã chọn "Don't ask again" hoặc từ chối triệt để.
+            // -> Hiện Dialog bắt vào Cài đặt.
+            showPermissionDeniedDialog()
+        } else {
+            // Trường hợp: Lần đầu xin, hoặc User từ chối nhưng cho phép hỏi lại.
+            hasRequestedPermission = true
+            lastPermissionRequestTime = System.currentTimeMillis() // Lưu thời gian
+
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.CAMERA),
+                REQUEST_CODE_PERMISSIONS
+            )
         }
     }
 
@@ -381,10 +405,13 @@ class CameraPlatformView(
                 Log.w(TAG, "No use cases were actually bound for viewId $viewId")
             }
             Log.d(TAG, "Camera use cases bound for viewId $viewId. Paused: $isCameraPausedManually")
+            isCameraInitialized = true
             methodChannel.invokeMethod("onCameraReady", null)
         } catch (exc: Exception) {
             Log.e(TAG, "Failed to bind camera use cases for viewId $viewId: ${exc.message}", exc)
             this.camera = null
+            isCameraInitialized = false
+
             val errorDetails = mapOf("message" to (exc.message ?: "Failed to bind use cases. Resolution may not be supported."))
             methodChannel.invokeMethod("onCameraError", errorDetails)
         }
@@ -631,6 +658,7 @@ class CameraPlatformView(
         Log.d(TAG, "Disposing CameraPlatformView for viewId $viewId")
         lifecycleOwner.lifecycle.removeObserver(this)
         isCameraPausedManually = false
+        isCameraInitialized = false
         cameraExecutor.shutdown()
         cameraProvider?.unbindAll()
         camera = null
