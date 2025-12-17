@@ -97,14 +97,12 @@ class _NativeCameraViewState extends State<NativeCameraView> {
       'cameraPreviewFit': widget.cameraPreviewFit?.name ?? 'cover',
       'isFrontCamera': widget.isFrontCamera ?? false,
       'bypassPermissionCheck': widget.bypassPermissionCheck ?? false,
-
       'previewPreset': widget.previewPreset?.name,
       'capturePreset': widget.capturePreset?.name,
       'captureMode': widget.captureMode?.name,
     };
 
-    final key = ValueKey(
-        "native_camera_platform_view_${creationParams['isFrontCamera']}");
+    final key = ValueKey("native_camera_platform_view_${creationParams['isFrontCamera']}");
 
     if (Platform.isAndroid) {
       return AndroidView(

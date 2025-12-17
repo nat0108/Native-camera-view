@@ -129,7 +129,6 @@ class CameraPlatformView(
         previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Sử dụng package name mới cho channel
         val channelName = "com.plugin.camera_native.native_camera_view/camera_method_channel_$viewId"
         methodChannel = MethodChannel(binaryMessenger, channelName)
         methodChannel.setMethodCallHandler { call, result ->
@@ -166,7 +165,6 @@ class CameraPlatformView(
             return
         }
 
-        // 1. Nếu ĐÃ có quyền -> Setup ngay
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             if (!isCameraInitialized) {
                 Log.d(TAG, "Permission granted. Setting up camera.")
@@ -175,40 +173,37 @@ class CameraPlatformView(
             return
         }
 
-        // 2. Nếu CHƯA có quyền -> Xử lý xin quyền
         val activity = findActivity()
         if (activity == null) return
 
-        // Reset trạng thái init vì chưa có quyền
         isCameraInitialized = false
 
-        // Kiểm tra xem có nên hiện UI giải thích không (True nếu user từ chối 1 lần, False nếu từ chối "Don't ask again" hoặc lần đầu)
-        val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
-
-        // CHỐT CHẶN QUAN TRỌNG:
-        // Nếu vừa mới xin quyền cách đây dưới 2 giây, thì BỎ QUA logic hiển thị dialog cài đặt.
-        // Lý do: onResume có thể bị gọi chồng chéo ngay khi dialog hệ thống vừa hiện lên.
         if (System.currentTimeMillis() - lastPermissionRequestTime < 2000) {
-            Log.d(TAG, "Just requested permission recently. Ignoring duplicate check in onResume.")
+            Log.d(TAG, "Request pending or too fast. Ignoring onResume check.")
             return
         }
 
-        if (hasRequestedPermission && !shouldShowRationale) {
-            // Trường hợp: Đã xin trước đó + Hệ thống bảo không cần hiện rationale
-            // -> Nghĩa là User đã chọn "Don't ask again" hoặc từ chối triệt để.
-            // -> Hiện Dialog bắt vào Cài đặt.
-            showPermissionDeniedDialog()
-        } else {
-            // Trường hợp: Lần đầu xin, hoặc User từ chối nhưng cho phép hỏi lại.
-            hasRequestedPermission = true
-            lastPermissionRequestTime = System.currentTimeMillis() // Lưu thời gian
+        val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
 
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(Manifest.permission.CAMERA),
-                REQUEST_CODE_PERMISSIONS
-            )
+        if (hasRequestedPermission && !shouldShowRationale) {
+            Log.d(TAG, "Permission permanently denied. Showing settings dialog.")
+
+            val errorDetails = mapOf("message" to "Camera permission denied permanently.")
+            methodChannel.invokeMethod("onCameraError", errorDetails)
+
+            showPermissionDeniedDialog()
+            return
         }
+
+        hasRequestedPermission = true
+        lastPermissionRequestTime = System.currentTimeMillis() // Cập nhật thời gian chặn
+
+        Log.d(TAG, "Requesting camera permission...")
+        ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(Manifest.permission.CAMERA),
+            REQUEST_CODE_PERMISSIONS
+        )
     }
 
     // Hàm mới để hiển thị dialog khi không có quyền

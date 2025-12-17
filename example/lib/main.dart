@@ -147,7 +147,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         await _cameraController?.resumeCamera();
         isPaused.value = false;
       }
-
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Chụp ảnh thất bại.')),
@@ -179,10 +178,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void _changeCameraFit(CameraPreviewFit? fit) {
     if (fit == null || (isPaused.value)) return;
     if (mounted) {
-      // GHI CHÚ: Việc gọi setState ở đây sẽ làm build lại NativeCameraView
-      // và truyền 'cameraPreviewFit' mới vào.
-      // Đây là cách làm tốn hiệu năng (nhưng là cách duy nhất nếu
-      // CameraController không có hàm 'setPreviewFit').
       setState(() {
         _currentFit = fit;
       });
@@ -234,22 +229,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         children: [
           Positioned.fill(
             child: NativeCameraView(
-              // REMOVED: key không còn cần thiết
-              // key: _cameraKey,
               onControllerCreated: _onCameraControllerCreated,
-              cameraPreviewFit: _currentFit,
+              cameraPreviewFit: CameraPreviewFit.cover,
               isFrontCamera: _isFrontCameraSelected,
-              // NEW: Thêm ví dụ về cài đặt chất lượng (từ prompt trước)
             ),
           ),
-
           if (_cameraController != null)
             Positioned(
               top: 16,
               right: 16,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.delete_sweep_outlined, size: 20),
-                label: const Text("Xóa ảnh"),
+                label: const Text("Delete image"),
                 onPressed: _deleteAllPhotos,
                 style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.withOpacity(0.7),
@@ -258,7 +249,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                     textStyle: const TextStyle(fontSize: 12)),
               ),
             ),
-
           if (_cameraController != null)
             Positioned(
               bottom: 30.0,
@@ -267,35 +257,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               child: Align(
                 alignment: Alignment.center,
                 child: FloatingActionButton(
-                  // MODIFIED: Vô hiệu hóa nút chụp khi camera đang pause
                   onPressed: isPaused.value ? null : _captureImage,
-                  tooltip: 'Chụp ảnh',
-                  backgroundColor: Colors.white.withOpacity(0.8),
+                  tooltip: 'Take image',
+                  backgroundColor: Colors.white.withValues(alpha: 0.8),
                   child: const Icon(Icons.camera_alt, color: Colors.black87, size: 30),
-                ),
-              ),
-            ),
-
-          if (_cameraController != null)
-            Positioned(
-              bottom: 30.0,
-              left: 30.0,
-              child: PopupMenuButton<CameraPreviewFit>(
-                initialValue: _currentFit,
-                onSelected: _changeCameraFit,
-                itemBuilder: (BuildContext context) => CameraPreviewFit.values
-                    .map((CameraPreviewFit fit) => PopupMenuItem<CameraPreviewFit>(
-                  value: fit,
-                  child: Text(fit.name),
-                ))
-                    .toList(),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.aspect_ratio, color: Colors.white),
                 ),
               ),
             ),
@@ -305,20 +270,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 }
 
-// MODIFIED: Thêm InteractiveViewer để hỗ trợ zoom
 class DisplayPictureScreen extends StatelessWidget {
   final String imagePath;
   const DisplayPictureScreen({super.key, required this.imagePath});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ảnh đã chụp')),
-      backgroundColor: Colors.black, // Thêm nền đen cho đẹp hơn
+      appBar: AppBar(title: const Text('Photo taken')),
+      backgroundColor: Colors.black,
       body: Center(
-        // NEW: InteractiveViewer cho phép pan và zoom
         child: InteractiveViewer(
-          maxScale: 4.0, // Cho phép zoom tối đa 4x
-          minScale: 0.5, // Cho phép zoom tối thiểu 0.5x
+          maxScale: 4.0,
+          minScale: 0.5,
           child: Image.file(File(imagePath)),
         ),
       ),

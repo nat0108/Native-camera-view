@@ -1,3 +1,11 @@
+## 0.0.17
+* **Android Fixes:**
+    * **Permission Logic:** Fixed a race condition where the "Open Settings" dialog appeared beneath the system permission dialog.
+    * **Loading State:** Fixed an issue where the loading indicator would spin indefinitely if permissions were denied or when returning from Settings without granting permissions.
+* **Example App:**
+    * Refactored to improve performance and stability (removed `UniqueKey` usage).
+    * Added `InteractiveViewer` to support zoom and pan on captured images.
+
 ## 0.0.16
 * Update readme
 
