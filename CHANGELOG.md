@@ -1,3 +1,6 @@
+## 0.0.17+1
+* add topics section
+
 ## 0.0.17
 * **Android Fixes:**
     * **Permission Logic:** Fixed a race condition where the "Open Settings" dialog appeared beneath the system permission dialog.
